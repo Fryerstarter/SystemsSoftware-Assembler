@@ -2,32 +2,35 @@
 TODO:
 
 1. implement two's complement for negative hex values
-2. problem with subHex
+2. Subtraction only works if result is positive
+
 
 */
 
 public class HexTester{
 	public static void main(String args[]){
+		System.out.println(HexUtil.addHex("101A","2FAC"));
+		System.out.println(HexUtil.hexToDecimal("ABBF123A"));
+		System.out.println(HexUtil.decimalToHex(11089753, false));
+		System.out.println(HexUtil.getHexValue(14));
+		System.out.println(HexUtil.getDecimalValue('F'));
+		System.out.println(HexUtil.subHex("0BCA", "AABF"));
 		
-		System.out.println(HexUtil.decimalToHex(256475, false));
-		System.out.println(HexUtil.addHex("AAA", "BBB"));
-		System.out.println(HexUtil.hexToDecimal("AAA"));
-		System.out.println(HexUtil.hexToDecimal("BBB"));
-		System.out.println(HexUtil.decimalToHex((HexUtil.hexToDecimal("AAA") - HexUtil.hexToDecimal("BBB")), true));
-		System.out.println(HexUtil.subHex("AAA", "AAA"));
 		
 		
 	}
 }
 
 class HexUtil{
-
+	
+	//Takes in two hex strings and returns the sum as a hex string
 	public static String addHex(String num1, String num2){
+		
 		String result;
 		boolean negative = false;
-		int doubleNum1 = hexToDecimal(num1);
-		int doubleNum2 = hexToDecimal(num2);
-		int resultdouble = doubleNum1 + doubleNum2;
+		long doubleNum1 = hexToDecimal(num1);
+		long doubleNum2 = hexToDecimal(num2);
+		long resultdouble = doubleNum1 + doubleNum2;
 		if(resultdouble < 0)
 			negative = true;
 		result = decimalToHex(resultdouble, negative);
@@ -36,10 +39,12 @@ class HexUtil{
 		
 	}
 
-	public static int hexToDecimal(String hex){
-		int result = 0;
+	//Takes a hex string and returns the decimal equivilent
+	public static long hexToDecimal(String hex){
+		long result = 0;
 		int power = 0;
 		for(int i = hex.length() - 1; i >= 0; i--){
+			//System.out.println("The character is " + hex.charAt(i) + " and the power is " + power);
 			result += Character.getNumericValue(hex.charAt(i)) * Math.pow(16, power);
 			power++;
 		}
@@ -47,12 +52,14 @@ class HexUtil{
 		return result;
 	}
 
-	public static String decimalToHex(int num, boolean negative){
+	//Takes a decimal value and converts it into a hex string
+	//negative boolean will need to be reworked using two's complement for negative decimal values
+	public static String decimalToHex(long num, boolean negative){
 		String result;
 		StringBuilder resultBuilder = new StringBuilder();
 		int power = 0;
 		
-		while((int)(num / (Math.pow(16, power))) > 0){
+		while((long)(num / (Math.pow(16, power))) > 0){
 			
 			power++;
 			
@@ -63,8 +70,8 @@ class HexUtil{
 		}
 		while(power >= 0){
 			
-			int currentVal = (int)(num / Math.pow(16,power));
-			num = (int)(num % Math.pow(16,power));
+			long currentVal = (long)(num / Math.pow(16,power));
+			num = (long)(num % Math.pow(16,power));
 			char nextChar = getHexValue(currentVal);
 			resultBuilder.append(nextChar);
 			power--;
@@ -74,9 +81,9 @@ class HexUtil{
 	}
 	
 	
-	//value must be less than 16 (for now)
-	public static char getHexValue(double value){
-		assert(value < 16 && value >= 0);
+	//returns the decimal value of a hex character. If value is >= 16, return character iz 'Z' indicating error
+	public static char getHexValue(long value){
+		
 		//takes an double < 16 and returns the hex equivilent
 		char result;
 		if(value >= 16){
@@ -99,6 +106,7 @@ class HexUtil{
 		return result;
 	}
 	
+	//Takes hex character and returns decimal value
 	public static int getDecimalValue(char hex){
 		int result;
 		if(hex == 'A'){
@@ -119,12 +127,14 @@ class HexUtil{
 		return result;
 	}
 
+	//Takes two hex strings and subtracts them, returning a hex string
+	//Only works for positive results currently
 	public static String subHex(String num1, String num2){
 		String result;
 		boolean negative= false;
-		int doubleNum1 = hexToDecimal(num1);
-		int doubleNum2 = hexToDecimal(num2);
-		int resultdouble = doubleNum1 - doubleNum2;
+		long doubleNum1 = hexToDecimal(num1);
+		long doubleNum2 = hexToDecimal(num2);
+		long resultdouble = doubleNum1 - doubleNum2;
 		if(resultdouble < 0)
 			negative = true;
 		result = decimalToHex(resultdouble, negative);
