@@ -1,6 +1,9 @@
-/* 
-This is entirely experimental and untested
-*/
+public class HexTester{
+	public static void main(String args[]){
+		System.out.println("123 in hex is " + HexUtil.decimalToHex(123));
+		System.out.println("AAA+BBB in hex is "+ HexUtil.addHex("AAA", "BBB");
+	}
+}
 
 static class HexUtil{
 
