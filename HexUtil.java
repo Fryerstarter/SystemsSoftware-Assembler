@@ -1,3 +1,7 @@
+/* 
+This is entirely experimental and untested
+*/
+
 static class HexUtil{
 
 	public static String addHex(String num1, String num2){
