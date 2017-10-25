@@ -85,8 +85,6 @@ class HexUtil{
 		long resultdouble = doubleNum1 - doubleNum2;
 		if (resultdouble < 0){
 			negative = true;
-			result = decimalToHex(resultdouble, negative);
-			return result;
 		}
 		result = decimalToHex(resultdouble,negative);
 		return result;
