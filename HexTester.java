@@ -8,6 +8,7 @@ public class HexTester{
 		System.out.println(HexUtil.decimalToHex(-10000, true));
 		System.out.println(HexUtil.getDecimalValue('F'));
 		System.out.println(HexUtil.subHex("0006", "001A"));
+		System.out.println(HexUtil.buildMachineCode(1, 1, 0, 0, 1, 0, "14", "030", "0003", ""));
 	}
 }
 
@@ -89,5 +90,42 @@ class HexUtil{
 		result = decimalToHex(resultdouble,negative);
 		return result;
 	}
-        
+	
+	
+	
+	//need to change b,p handling. should not need in the argument. try p first then b if fails then throw fail code. 
+       
+	public static String buildMachineCode(int n, int i, int x, int b, int p, int e, String opCode, String memoryLoc, String LOCCTR, String BASE){
+		String machineCode;
+		String xbpeBinary;
+		String displacement = "";
+		StringBuilder xbpeBinaryBuilder = new StringBuilder();
+		StringBuilder codeBuilder = new StringBuilder();
+		if(n ==1 && i == 0){
+			opCode = addHex(opCode, "2");
+		}else if(n == 0 && i == 1){
+			opCode = addHex(opCode, "1");
+		}else if(n ==1 && i == 1){
+			opCode = addHex(opCode, "3");
+		}
+		xbpeBinaryBuilder.append(x);
+		xbpeBinaryBuilder.append(b);
+		xbpeBinaryBuilder.append(p);
+		xbpeBinaryBuilder.append(e);
+		xbpeBinary = xbpeBinaryBuilder.toString();
+		int decimal = Integer.parseInt(xbpeBinary,2);
+		xbpeBinary = Integer.toString(decimal,16);
+		codeBuilder.append(opCode);
+		codeBuilder.append(xbpeBinary);
+		
+		if(b == 0 && p == 1){
+			displacement = subHex(memoryLoc, LOCCTR);
+		}else if(b == 1 && p == 0){
+			displacement = subHex(memoryLoc, BASE);
+		}
+		codeBuilder.append(displacement);
+		machineCode = codeBuilder.toString();
+		return machineCode;
+		
+	}
 }
