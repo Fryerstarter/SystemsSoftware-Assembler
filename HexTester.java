@@ -153,7 +153,7 @@ class HexUtil{
 		codeBuilder.append(r2);
 		
 		
-		return codeBuilder.toString().toUpperCase();
+		return codeBuilder.toString();
 	}
 	
 	public static String buildFormat3(int n, int i, int x, int e, String opCode, String memoryLoc, String LOCCTR, String BASE){
@@ -198,7 +198,7 @@ class HexUtil{
 		codeBuilder.append(formatDisplacement(displacement, 3));
 		machineCode = codeBuilder.toString();
 		
-		return machineCode.toUpperCase();
+		return machineCode;
 		
 	}
 	
@@ -209,7 +209,7 @@ class HexUtil{
 		codeBuilder.append(buildOpNI(opCode, n, i));
 		codeBuilder.append(buildXBPE(x, b, p, e));
 		codeBuilder.append(formatDisplacement(memoryLoc, 4));
-		return codeBuilder.toString().toUpperCase();
+		return codeBuilder.toString();
 		
 	}
 	
@@ -233,6 +233,6 @@ class HexUtil{
 			machineCode = buildFormat4(n, i, x, e, opCode, memoryLoc);
 		}
 		
-		return machineCode;
+		return machineCode.toUpperCase();
 	}
 }
