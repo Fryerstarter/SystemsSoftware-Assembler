@@ -143,6 +143,7 @@ public class Assembler{
 	}
 	
 	public static String intermediateLine(String LOCCTR, int lineNum, String currentLine){
+		//builds the line for writing to file
     	StringBuilder lineBuilder = new StringBuilder();
     	lineBuilder.append(Integer.toString(lineNum));
     	lineBuilder.append("\t");
@@ -159,7 +160,7 @@ public class Assembler{
 
 
 class LineParser{
-	
+	//used to parse each line of input and determine format 3/4
 
 	public static Line parseLine(String input){
 		Line line = null;
@@ -205,6 +206,7 @@ class LineParser{
 }
 
 class Line{
+	//used to store important values as each line is processed
 	String OPCODE, OPERAND, SYMBOL;
 	boolean format4 = false;
 	
