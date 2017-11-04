@@ -1,3 +1,4 @@
+
 /*
  - * Emily Czarnecki, Brennan Ledbetter, Christopher Kile
  - * 
@@ -11,10 +12,9 @@
 
 import java.util.*;
 import java.io.*;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
-public class TestPass{
+
+public class Assembler{
 	public static void main(String[] args){
 		
 		
@@ -65,7 +65,14 @@ public class TestPass{
 					System.out.println(currentLine.getSYMBOL());
 					//check for label in the line
 					if(currentLine.getSYMBOL() != null){
-						if(SYMTAB.get(currentLine.getSYMBOL().toUpperCase())!= null && currentLine.getSYMBOL().isEmpty() && !(currentLine.getSYMBOL().equals(""))){
+						Symbol currentSymbol = SYMTAB.get(currentLine.getSYMBOL());
+						if(currentSymbol == null){
+							System.out.println("Not found");
+						}else{
+							System.out.println("Found symbol: " + currentSymbol.getLabel() + " at mem loc: " + currentSymbol.getMemoryLocation());
+						}
+						if(SYMTAB.get(currentLine.getSYMBOL())!= null && !(currentLine.getSYMBOL().equals(""))){
+							
 							//SYMBOL already in SYMTAB, set error
 							error = true;
 							//intermediateFile.write(intermediateLine(LOCCTR, lineNum, input));
