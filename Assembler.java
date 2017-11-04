@@ -1,3 +1,14 @@
+/*
+ - * Emily Czarnecki, Brennan Ledbetter, Christopher Kile
+ - * 
+ - * 11/2/2017 - Work Completed:
+ - * -built data structures
+ - * -built hex utility functions
+ - * -built machinecode assembler
+ - * -most of Pass 1 is built - currently debugging
+ - * 
+*/
+
 import java.util.*;
 import java.io.*;
 import java.util.regex.Matcher;
