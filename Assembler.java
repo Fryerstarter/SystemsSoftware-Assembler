@@ -34,7 +34,7 @@ public class Assembler{
 		try{
 			
 			BufferedReader inputFile = new BufferedReader(new FileReader(filename));
-            BufferedWriter intermediateFile = new BufferedWriter(new FileWriter(filename+".lst"));
+                        BufferedWriter intermediateFile = new BufferedWriter(new FileWriter(filename+".lst"));
 			boolean format4 = false;
 			
 			boolean isComment = false;
@@ -116,9 +116,11 @@ public class Assembler{
 						intermediateFile.write("\t" + input);
 						intermediateFile.newLine();
 						break;
-					}else{
+					}//else if(currentLine.getOPCODE().equals("BASE")){
+						//intermediateFile.write("\t" + input);
+						//intermediateFile.newLine();}
+                                        else{
 						error = true;
-						
 						intermediateFile.write("OPCODE on line " + lineNum + " not found. Please verify spelling.");
 						intermediateFile.newLine();
 						
@@ -141,23 +143,22 @@ public class Assembler{
 		}
 		
 	}
+        
+        
 	
 	public static String intermediateLine(String LOCCTR, int lineNum, String currentLine){
-		//builds the line for writing to file
-    	StringBuilder lineBuilder = new StringBuilder();
-    	lineBuilder.append(Integer.toString(lineNum));
-    	lineBuilder.append("\t");
-    	lineBuilder.append(LOCCTR);
-    	lineBuilder.append("\t");
-    	lineBuilder.append(currentLine);
-    	return lineBuilder.toString().toUpperCase();
+            //builds the line for writing to file
+            StringBuilder lineBuilder = new StringBuilder();
+            lineBuilder.append(Integer.toString(lineNum));
+            lineBuilder.append("\t");
+            lineBuilder.append(LOCCTR);
+            lineBuilder.append("\t");
+            lineBuilder.append(currentLine);
+            
+            return lineBuilder.toString().toUpperCase();
     	
     }
 }
-
-
-
-
 
 class LineParser{
 	//used to parse each line of input and determine format 3/4
@@ -165,9 +166,9 @@ class LineParser{
 	public static Line parseLine(String input){
 		Line line = null;
 		try{
-			String SYMBOL= "";
-			String OPCODE = "";
-			String TARGET = "";
+			String SYMBOL;
+			String OPCODE;
+			String TARGET;
 			
 			boolean format4 = false;
 			String[] splitArray = input.split("\\s+");
@@ -181,19 +182,26 @@ class LineParser{
 					OPCODE = OPCODE.substring(1, OPCODE.length());
 					format4 = true;
 				}
-			
+                                System.out.print("\nTHREE*******"+ OPCODE);
 				line =  new Line(SYMBOL, OPCODE, TARGET);
 				
 			}else if(splitArray.length == 2){
 				SYMBOL = null;
 				OPCODE = splitArray[0];
 				TARGET = splitArray[1];
+                                
+                                if (TARGET.equals("RSUB")){
+                                    OPCODE = "RSUB";
+                                    TARGET = null;
+                                }
 				if(OPCODE.contains("+")){
 					OPCODE = OPCODE.substring(1, OPCODE.length() - 1);
 					format4 = true;
 				}
+                                System.out.print("\nTWO*******" + OPCODE);
 				line =  new Line(OPCODE, TARGET);
 				
+                               
 			}
 			line.setFormat4(format4);
 			
@@ -220,8 +228,8 @@ class Line{
 		this.SYMBOL = SYMBOL;
 		this.OPCODE = OPCODE;
 		this.OPERAND = OPERAND;
-	}
-	
+        }
+           
 	public String getSYMBOL(){
 		return SYMBOL;
 	}
@@ -294,7 +302,7 @@ class HexUtil{
 		int result = 0;
 		int power = 0;
 		for(int i = hex.length() - 1; i >= 0; i--){
-			//System.out.println("The character is " + hex.charAt(i) + " and the power is " + power);
+			
 			result += Character.getNumericValue(hex.charAt(i)) * Math.pow(16, power);
 			power++;
 		}
@@ -458,12 +466,6 @@ class HexUtil{
 		
 	}
 	
-	
-	
-	
-		
-	
-       
 	public static String buildMachineCode(int n, int i, int x, int e, String opCode, String memoryLoc, String LOCCTR, String BASE, int format){
 		//returns -1 if unable to use base of pc relative
 		//format 2, for now, uses memoryLoc as r1 and BASE as r2
