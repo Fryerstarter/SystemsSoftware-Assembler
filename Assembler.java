@@ -154,13 +154,15 @@ public class Assembler{
 			intermediateFile.close();
 			inputFile.close();
 		}catch(Exception e){
-			
+			System.out.println("An unexpected error has occurred. Please try again.");
 		}
 
 		return LOCCTR;
 	}
 	
 	public static void passTwo(String filename, String LOCCTR,Hashtable<String, Symbol> SYMTAB, Hashtable<String, Operation> OPTAB){
+            int n, i, x, b, p, e;
+            
 		try{
 			String currentTextRecordLength = "0000";
 			StringBuilder textRecord = new StringBuilder();
@@ -286,8 +288,8 @@ public class Assembler{
             
             
             objectFile.close();
-		}catch(Exception e){
-			
+		}catch(Exception e2){
+			System.out.println("An unexpected error has occurred. Please try again.");
 		}
 		
 		//END PASS 2
@@ -312,58 +314,83 @@ public class Assembler{
 
 class LineParser{
 	//used to parse each line of input and determine format 3/4
-	public static IntermediateLine parseLinePassTwo(String input){
-		IntermediateLine line = null;
-		try{
-			String LOCCTR = "";
+    public static IntermediateLine parseLinePassTwo(String input){
+	IntermediateLine line = null;
+	try{
+            String LOCCTR = "";
+            String SYMBOL= "";
+            String OPCODE = "";
+            String TARGET = "";
 			
-			String SYMBOL= "";
-			String OPCODE = "";
-			String TARGET = "";
-			
-			boolean format4 = false;
-			String[] splitArray = input.split("\\s+");
-			if(input.contains("+"))
-				format4 = true;
-			if(splitArray.length == 5){
-				LOCCTR = splitArray[1];
-				SYMBOL = splitArray[2];
-				OPCODE = splitArray[3];
-				TARGET = splitArray[4];
-				if(OPCODE.contains("+")){
-					OPCODE = OPCODE.substring(1, OPCODE.length());
-					format4 = true;
-				}
-			
-				line =  new IntermediateLine(LOCCTR, SYMBOL, OPCODE, TARGET);
-				
-			}else if(splitArray.length == 4){
-				SYMBOL = null;
-				LOCCTR = splitArray[1];
-				OPCODE = splitArray[2];
-				TARGET = splitArray[3];
-				if(TARGET.equals("RSUB")){
-					OPCODE = "RSUB";
-				}
-				if(OPCODE.contains("+")){
-					
-					OPCODE = OPCODE.substring(1, OPCODE.length() - 1);
-					format4 = true;
-				}
-				line =  new IntermediateLine(LOCCTR, OPCODE, TARGET);
-				
-			}else if(splitArray.length == 3){
-				LOCCTR = splitArray[1];
-				OPCODE = splitArray[0];
-			}
-			line.setFormat4(format4);
-			
-		}catch(Exception e){
-			
+            boolean format4 = false;
+            String[] splitArray = input.split("\\s+");
+            System.out.print("Array size is: " + splitArray.length + "\n");        
+            //if(input.contains("+"))
+            //format4 = true;
+            
+            if(splitArray.length == 5){
+                LOCCTR = splitArray[1];
+                SYMBOL = splitArray[2];
+                OPCODE = splitArray[3];
+                TARGET = splitArray[4];
+                
+		if(OPCODE.contains("+")){
+                    OPCODE = OPCODE.substring(1, OPCODE.length());
+                    format4 = true;
 		}
-		return line;
-		
+                if(TARGET.contains("#")){
+                    TARGET = TARGET.substring(1, TARGET.length());
+                }
+                if (TARGET.contains(",")){
+                    String[] target = TARGET.split(",");
+                    String TARGET1 = target[0];
+                    String TARGET2 = target[1];
+                    line =  new IntermediateLine(LOCCTR, OPCODE, TARGET1, TARGET2);
+                    System.out.print("TARGET is: " + TARGET1 + " " + TARGET2 + "\n");
+                }else{
+                    line =  new IntermediateLine(LOCCTR, OPCODE, TARGET);
+                    System.out.print("LOCCTR: " +  LOCCTR + " OPCODE: " + OPCODE + " TARGET: " + TARGET + " Format 4 is: " + format4 + "\n");
+                }
+				
+            }else if(splitArray.length == 4){
+                SYMBOL = null;
+		LOCCTR = splitArray[1];
+		OPCODE = splitArray[2];
+		TARGET = splitArray[3];
+                
+		if(OPCODE.contains("+")){
+                    OPCODE = OPCODE.substring(1, OPCODE.length());
+                    format4 = true;
+		}
+                if(TARGET.contains("#")){
+                    TARGET = TARGET.substring(1, TARGET.length());
+                }
+                if (TARGET.contains(",")){
+                    String[] target = TARGET.split(",");
+                    String TARGET1 = target[0];
+                    String TARGET2 = target[1];
+                    line =  new IntermediateLine(LOCCTR, OPCODE, TARGET1, TARGET2);
+                    System.out.print("LOCCTR: " +  LOCCTR + " OPCODE: " + OPCODE + " TARGETs are: " + TARGET1 + " " + TARGET2 + "\n");
+                }else{
+                    line =  new IntermediateLine(LOCCTR, OPCODE, TARGET);
+                    System.out.print("LOCCTR: " +  LOCCTR + " OPCODE: " + OPCODE + " TARGET: " + TARGET + " Format 4 is: " + format4 + "\n");
+                }
+                
+				
+            }else if(splitArray.length == 3){
+		LOCCTR = splitArray[1];
+		OPCODE = splitArray[2];
+                System.out.print("LOCCTR: " +  LOCCTR +  " OPCODE: " + OPCODE + "\n");
+            }
+            line.setFormat4(format4);
+			
+	}catch(Exception e){
+			
 	}
+	
+        return line;
+		
+    }
 	
 	public static Line parseLinePassOne(String input){
 		Line line = null;
@@ -414,7 +441,7 @@ class LineParser{
 }
 
 class IntermediateLine{
-	String OPCODE, OPERAND, SYMBOL, LOCCTR;
+	String OPCODE, OPERAND,OPERAND2, SYMBOL, LOCCTR;
 	boolean format4 = false;
 	
 	public IntermediateLine(String LOCCTR, String OPCODE, String OPERAND){
@@ -422,6 +449,7 @@ class IntermediateLine{
 		this.SYMBOL = null;
 		this.OPCODE = OPCODE;
 		this.OPERAND = OPERAND;
+                this.OPERAND2 = null;
 	}
 	
 	public IntermediateLine(String LOCCTR, String SYMBOL, String OPCODE, String OPERAND){
@@ -429,6 +457,14 @@ class IntermediateLine{
 		this.SYMBOL = SYMBOL;
 		this.OPCODE = OPCODE;
 		this.OPERAND = OPERAND;
+                this.OPERAND2 = null;
+	}
+        public IntermediateLine(String LOCCTR, String SYMBOL, String OPCODE, String OPERAND, String OPERAND2){
+		this.LOCCTR = LOCCTR;
+		this.SYMBOL = SYMBOL;
+		this.OPCODE = OPCODE;
+		this.OPERAND = OPERAND;
+                this.OPERAND2 = OPERAND2;
 	}
 
 	public String toString(){
