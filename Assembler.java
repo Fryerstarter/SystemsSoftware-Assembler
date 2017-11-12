@@ -1,4 +1,4 @@
-package syssoftware_project;
+package com.company;
 /*
  - * Emily Czarnecki, Brennan Ledbetter, Christopher Kile
  - * 
@@ -159,6 +159,7 @@ public class Assembler {
             inputFile.close();
         } catch (Exception e) {
             System.out.println("An unexpected error has occurred. Please try again.");
+
             e.printStackTrace();
         }
         if(error == true){
@@ -295,11 +296,11 @@ public class Assembler {
                                         
                                     }else if (format == 4){
                                         
-					if (input.contains(",")){
-                                            x = 1;
-                                        }
+                                        if (input.contains(",")){
+                                                                x = 1;
+                                                            }
 
-					if(input.contains("#")){
+                                        if(input.contains("#")){
                                             if (SYMTAB.get(line.OPERAND) != null){
                                                 operand = SYMTAB.get(line.OPERAND).getMemoryLocation();
                                                 n = 0;
@@ -319,59 +320,65 @@ public class Assembler {
                                     }
                                 }
                             }
-                            System.out.println("Object code for line " + lineNum + " is: " + objectCode.toUpperCase());
-                            
-                            if (HexUtil.hexToDecimal((HexUtil.addHex(currentTextRecordLength, lengthOfObjectCodeInHalfBytes))) > 60 || codeBreak) {
-                               //create new text record and write current to .obj file
-                               String textLine = textLine(currentStartingAddress, textRecord.toString());
-                               textRecord = new StringBuilder();
-                               objectFile.write(textLine);
-                               objectFile.newLine();
-                               lineFull = false;
-                               codeBreak = false;
-                               textRecord.append(objectCode.toUpperCase());
-                            } else {
-                               currentTextRecordLength = HexUtil.addHex(currentTextRecordLength, lengthOfObjectCodeInHalfBytes);
-                               textRecord.append(objectCode.toUpperCase());
-                            }
-                        //end if opcode is in OPTAB     
-                        }else  if(line.getOPCODE().equals("WORD")){
-                            objectCode = HexUtil.formatAddress(HexUtil.decimalToHex(Integer.parseInt(line.OPERAND), false));
-                            System.out.println("Object code for line " + lineNum + " is: " + objectCode.toUpperCase());
-                            lengthOfObjectCodeInHalfBytes = "6";
-                            //machine code = hex rep of decimal
-                            if (HexUtil.hexToDecimal((HexUtil.addHex(currentTextRecordLength, lengthOfObjectCodeInHalfBytes))) > 60 || codeBreak) {
-                                //create new text record and write current to .obj file
-                                String textLine = textLine(currentStartingAddress, textRecord.toString());
-                                textRecord = new StringBuilder();
-                                currentTextRecordLength = "0";
-                                objectFile.write(textLine);
-                                objectFile.newLine();
-                                lineFull = false;
-                                codeBreak = false;
-                                textRecord.append(objectCode.toUpperCase());
-                           } else {
-                                currentTextRecordLength = HexUtil.addHex(currentTextRecordLength, lengthOfObjectCodeInHalfBytes);
-                                textRecord.append(objectCode.toUpperCase());
-                           }
-                            
-                        }else if(line.getOPCODE().equals("RESW") || line.getOPCODE().equals("RESB")){
-                           //indicates code break, no machine code generated
-                           codeBreak = true;
-                        }else{
-                            //operation unsupported
-                            error = true;
-                        }
-                        
-                        if(codeBreak && textRecord.length() != 0){
-                            String textLine = textLine(currentStartingAddress, textRecord.toString());
-                            textRecord = new StringBuilder();
-                            currentTextRecordLength = "0";
-                            objectFile.write(textLine);
-                            objectFile.newLine();
-                            lineFull = false;
-                            codeBreak = false;
-                        }
+
+
+                    if (HexUtil.hexToDecimal((HexUtil.addHex(currentTextRecordLength, lengthOfObjectCodeInHalfBytes))) > 60 || codeBreak) {
+                       //create new text record and write current to .obj file
+                       String textLine = textLine(currentStartingAddress, textRecord.toString());
+                       textRecord = new StringBuilder();
+                       objectFile.write(textLine);
+                       objectFile.newLine();
+                       lineFull = false;
+                       codeBreak = false;
+                       textRecord.append(objectCode.toUpperCase());
+                        System.out.println("Object code for line " + lineNum + " is: " + objectCode.toUpperCase());
+                    } else {
+                       currentTextRecordLength = HexUtil.addHex(currentTextRecordLength, lengthOfObjectCodeInHalfBytes);
+                        System.out.println("Object code for line " + lineNum + " is: " + objectCode.toUpperCase());
+                       textRecord.append(objectCode.toUpperCase());
+                    }
+                //end if opcode is in OPTAB
+                }else  if(line.getOPCODE().equals("WORD")){
+                    objectCode = HexUtil.formatAddress(HexUtil.decimalToHex(Integer.parseInt(line.OPERAND), false));
+                    System.out.println("Object code for line " + lineNum + " is: " + objectCode.toUpperCase());
+                    lengthOfObjectCodeInHalfBytes = "6";
+                    //machine code = hex rep of decimal
+                    if (HexUtil.hexToDecimal((HexUtil.addHex(currentTextRecordLength, lengthOfObjectCodeInHalfBytes))) > 60 || codeBreak) {
+                        //create new text record and write current to .obj file
+                        String textLine = textLine(currentStartingAddress, textRecord.toString());
+                        textRecord = new StringBuilder();
+                        currentTextRecordLength = "0";
+                        objectFile.write(textLine);
+                        objectFile.newLine();
+                        lineFull = false;
+                        codeBreak = false;
+                        textRecord.append(objectCode.toUpperCase());
+                        currentTextRecordLength = HexUtil.addHex(currentTextRecordLength, lengthOfObjectCodeInHalfBytes);
+                        System.out.println("Object code for line " + lineNum + " is: " + objectCode.toUpperCase());
+                   } else {
+                        currentTextRecordLength = HexUtil.addHex(currentTextRecordLength, lengthOfObjectCodeInHalfBytes);
+                        textRecord.append(objectCode.toUpperCase());
+
+                   }
+
+                }else if(line.getOPCODE().equals("RESW") || line.getOPCODE().equals("RESB")){
+                   //indicates code break, no machine code generated
+                   codeBreak = true;
+                }else{
+                    //operation unsupported
+                    System.out.println("Operation unsupported, error! " + line.getOPCODE());
+                    error = true;
+                }
+
+                if(codeBreak && textRecord.length() != 0){
+                    String textLine = textLine(currentStartingAddress, textRecord.toString());
+                    textRecord = new StringBuilder();
+                    currentTextRecordLength = "0";
+                    objectFile.write(textLine);
+                    objectFile.newLine();
+                    lineFull = false;
+                    codeBreak = false;
+                }
                 //end isComment if statement
                 }
             //end while loop reading input       
@@ -397,7 +404,8 @@ public class Assembler {
 	
 	public static boolean isComment(String line){
 		String[] splitArray = line.split("\\s+");
-		if(splitArray[0].equals(".") || splitArray[1].equals("."))
+
+		if(splitArray[0].equals("."))
 			return true;
 		else
 			return false;
@@ -475,7 +483,7 @@ class LineParser {
             //System.out.print("Array size is: " + splitArray.length + "\n");
             //if(input.contains("+"))
             //format4 = true;
-            if(input.contains("END")){
+            if(splitArray[0].equals("END")){
                 OPCODE = "END";
                 line = new IntermediateLine(LOCCTR, OPCODE, TARGET);
             }else if (splitArray.length == 5) {
@@ -595,7 +603,7 @@ class LineParser {
 						OPCODE = "RSUB";
 					}
 					if (OPCODE.contains("+")) {
-						OPCODE = OPCODE.substring(1, OPCODE.length() - 1);
+						OPCODE = OPCODE.substring(1, OPCODE.length());
 						format4 = true;
 					}
 					
