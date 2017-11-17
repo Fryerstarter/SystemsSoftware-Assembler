@@ -1,155 +1,188 @@
-package com.company;
-/*
- - * Emily Czarnecki, Brennan Ledbetter, Christopher Kile
- - * 
- - * 11/7/2017 - Work Completed:
- - * -built data structures
- - * -built hex utility functions
- - * -built machinecode assembler
- - * -passOne finished
- - * -passTwo partially implemented
- - * TODO
- - * -handle whitespace for comment lines
- - * -Build passTwo
- - * -test test test test test!
- - * -identify symbols in operand, eg SYMBOL,X     +, #
- */
+package syssoftware_project;
 import java.util.*;
 import java.io.*;
-
+/**
+ * @author Emily Czarnecki, Brennan Ledbetter, Christopher Kile
+ * COP3404 Fall 2017
+ * DUE: NOVEMBER 30 2017
+ * Build a two pass assembler that assembles SIC/XE instructions
+ * NOT INLUCDED:
+ *  -literals & floating point instructions
+ *  -EQU, USE, CSECT directives
+ *  -HIO,LPS,SKK,STI,STSW,SVC,SIO,TIO instructions
+ */
 public class Assembler {
-
+    /**
+     * MAIN METHOD: calls and runs pass one and pass two
+     * @param args 
+     */
     public static void main(String[] args) {
 
         if (args.length < 1) {
             System.out.println("Must provide source file as command line argument");
             System.exit(0);
         }
-
+        //create SYMTAB and OBTAB hash tables
         Hashtable<String, Symbol> SYMTAB = new Hashtable<String, Symbol>();
         Hashtable<String, Operation> OPTAB = Operation.buildOPTAB();
+        
+        //run Pass One
         String LOCCTR = passOne(args[0], SYMTAB, OPTAB);
+        //if -1 returned source code has errors
         if(LOCCTR.equals("-1")){
-            System.out.println("Error in pass 1");
+            System.out.println("Error in pass 1. No object code generated.\nPlease review.lst file for errors");
+        //if no errors, run Pass Two
         }else{
             System.out.println("PASS 2 STARTING");
             passTwo(args[0], LOCCTR, SYMTAB, OPTAB);
             System.out.println("pass 2 done");
         }
     }
-
+    /**
+     * Pass One of the Assembler - reads source file and generates an intermediate file that builds
+     * location addresses for each line of source code
+     * @param filename
+     * @param SYMTAB
+     * @param OPTAB
+     * @return 
+     */
     public static String passOne(String filename, Hashtable<String, Symbol> SYMTAB, Hashtable<String, Operation> OPTAB) {
+        //variable declarations
         String input, LOCCTR = "0000";
-        boolean error = false;
-        int lineNum = 0;
-        int format = 3;
+        String[] cLine = new String[2];
+        boolean error = false, format4 = false;
+        int lineNum = 0,format = 3;
         Line currentLine;
+        
         try {
-
             BufferedReader inputFile = new BufferedReader(new FileReader(filename));
             BufferedWriter intermediateFile = new BufferedWriter(new FileWriter(filename + ".lst"));
-            boolean format4 = false;
-
-            boolean isComment = false;
-
+            
+            //read in first line
             input = inputFile.readLine();
+            
             if (input == null) {
                 System.exit(0);
             }
+            //ignores processing any lines that start with '.' indicating a comment, just writes to .lst file
+            while (input.startsWith(".")){
+                intermediateFile.write(lineNum + "\t" + input);
+                intermediateFile.newLine();
+                input = inputFile.readLine();
+            }
+            //parse out source code if line contains a comment
+            if (input.contains(".")){
+                cLine = parseComment(input);
+                currentLine = LineParser.parseLinePassOne(cLine[0]);
+            }
+            else
+                currentLine = LineParser.parseLinePassOne(input);
+            
+            //increase line count
             lineNum++;
-            currentLine = LineParser.parseLinePassOne(input);
-
+            
             if (currentLine.getOPCODE().equals("START")) {
-
                 LOCCTR = HexUtil.formatLOCCTR(currentLine.getOPERAND());
             } else {
                 LOCCTR = "0000";
             }
-
+            //write line to .lst file
             intermediateFile.write(intermediateLine(LOCCTR, lineNum, input));
             intermediateFile.newLine();
+            
             while ((input = inputFile.readLine()) != null && !(currentLine.getOPCODE().equals("END"))) {
-                currentLine = LineParser.parseLinePassOne(input);
+                while (input.startsWith(".")){
+                    lineNum++;
+                    intermediateFile.write(lineNum + "\t" + input);
+                    intermediateFile.newLine();
+                    input = inputFile.readLine();
+                }
+                if (input.contains(".")){
+                    cLine = parseComment(input);
+                    currentLine = LineParser.parseLinePassOne(cLine[0]);
+                }
+                else
+                    currentLine = LineParser.parseLinePassOne(input);
+                
                 if (input.contains("+")) {
                     format4 = true;
                 }
+                
                 lineNum++;
-                //check if comment
-                if (!isComment(input)) {
 
-                    //check for label in the line
-                    if (currentLine.getSYMBOL() != null) {
-                        Symbol currentSymbol = SYMTAB.get(currentLine.getSYMBOL());
+                //check for label in the line
+                if (currentLine.getSYMBOL() != null) {
+                    Symbol currentSymbol = SYMTAB.get(currentLine.getSYMBOL());
 
-                        if (SYMTAB.get(currentLine.getSYMBOL()) != null && !(currentLine.getSYMBOL().equals("")) && !(currentLine.getSYMBOL().isEmpty())) {
+                    if (SYMTAB.get(currentLine.getSYMBOL()) != null && !(currentLine.getSYMBOL().equals("")) && !(currentLine.getSYMBOL().isEmpty())) {
 
-                            //SYMBOL already in SYMTAB, set error
-                            error = true;
-
-                            intermediateFile.write("Duplicate symbol: " + currentLine.getSYMBOL().toUpperCase() + "on line " + lineNum);
-                            intermediateFile.newLine();
-                        } else {
-
-                            //SYMBOL not found in SYMTAB, enter into SYMTAB
-
-                            SYMTAB.put(currentLine.getSYMBOL().toUpperCase(), new Symbol(currentLine.getSYMBOL().toUpperCase(), LOCCTR));
-                        }
-                    }
-
-                    //save current LOCCTR for memory location
-                    String preLOCCTR = LOCCTR;
-
-                    Operation currentOp;
-
-                    //determine what to add to LOCCTR for next instruction
-
-                    if ((currentOp = OPTAB.get(currentLine.getOPCODE())) != null) {
-                        if (currentOp.getFormat() == -1) {
-                            intermediateFile.write("Operation on line number " + lineNum + " is not supported.");
-                            intermediateFile.newLine();
-                        } else if (format4) {
-                            format = 4;
-                        } else {
-                            format = currentOp.getFormat();
-                        }
-                        LOCCTR = HexUtil.addHex(LOCCTR, HexUtil.decimalToHex((long) format, false));
-
-                    } else if (currentLine.getOPCODE().equals("WORD")) {
-                        LOCCTR = HexUtil.addHex(LOCCTR, Integer.toString(3));
-                    } else if (currentLine.getOPCODE().equals("RESW")) {
-                        int memAdd = 3 * Integer.parseInt(currentLine.getOPERAND());
-                        String memAddHex = HexUtil.decimalToHex(memAdd, false);
-                        LOCCTR = HexUtil.addHex(LOCCTR, memAddHex);
-                    } else if (currentLine.getOPCODE().equals("RESB")) {
-                        System.out.println("RESB found, value of operand is :" + Integer.toString(Integer.parseInt(currentLine.getOPERAND())));
-                        LOCCTR = HexUtil.addHex(LOCCTR, HexUtil.decimalToHex(Integer.parseInt(currentLine.getOPERAND()), false));
-
-                    } else if (currentLine.getOPCODE().equals("BYTE")) {
-                        LOCCTR = HexUtil.addHex(LOCCTR, Integer.toString(1));
-
-                    } else if (currentLine.getOPCODE().equals("END")) {
-                        intermediateFile.write("\t" + input);
-                        intermediateFile.newLine();
-                        break;
-                    } else if (currentLine.getOPCODE().equals("EQU") || currentLine.getOPCODE().equals("USE") || currentLine.getOPCODE().equals("CSECT")) {
-                        intermediateFile.write("Operation on line number " + lineNum + " is not supported.");
-                        intermediateFile.newLine();
-                    } else if(currentLine.getOPCODE().equals("BASE")){
-                   
-                    }else{
-
+                        //SYMBOL already in SYMTAB, set error
                         error = true;
 
-                        intermediateFile.write("OPCODE on line " + lineNum + " not found. Please verify spelling.");
+                        intermediateFile.write("Duplicate symbol: " + currentLine.getSYMBOL().toUpperCase() + "on line " + lineNum);
                         intermediateFile.newLine();
+                    } else {
 
+                        //SYMBOL not found in SYMTAB, enter into SYMTAB
+
+                        SYMTAB.put(currentLine.getSYMBOL().toUpperCase(), new Symbol(currentLine.getSYMBOL().toUpperCase(), LOCCTR));
                     }
-                    LOCCTR = HexUtil.formatLOCCTR(LOCCTR);
-                    // end of IS COMMENT
-                    //write line to .lst
-                    intermediateFile.write(intermediateLine(preLOCCTR, lineNum, input));
-                    intermediateFile.newLine();
                 }
+
+                //save current LOCCTR for memory location
+                String preLOCCTR = LOCCTR;
+
+                Operation currentOp;
+
+                //determine what to add to LOCCTR for next instruction
+
+                if ((currentOp = OPTAB.get(currentLine.getOPCODE())) != null) {
+                    if (currentOp.getFormat() == -1) {
+                        intermediateFile.write("Operation on line number " + lineNum + " is not supported.");
+                        intermediateFile.newLine();
+                    } else if (format4) {
+                        format = 4;
+                    } else {
+                        format = currentOp.getFormat();
+                    }
+                    LOCCTR = HexUtil.addHex(LOCCTR, HexUtil.decimalToHex((long) format, false));
+
+                } else if (currentLine.getOPCODE().equals("WORD")) {
+                    LOCCTR = HexUtil.addHex(LOCCTR, Integer.toString(3));
+                } else if (currentLine.getOPCODE().equals("RESW")) {
+                    int memAdd = 3 * Integer.parseInt(currentLine.getOPERAND());
+                    String memAddHex = HexUtil.decimalToHex(memAdd, false);
+                    LOCCTR = HexUtil.addHex(LOCCTR, memAddHex);
+                } else if (currentLine.getOPCODE().equals("RESB")) {
+                    System.out.println("RESB found, value of operand is :" + Integer.toString(Integer.parseInt(currentLine.getOPERAND())));
+                    LOCCTR = HexUtil.addHex(LOCCTR, HexUtil.decimalToHex(Integer.parseInt(currentLine.getOPERAND()), false));
+
+                } else if (currentLine.getOPCODE().equals("BYTE")) {
+                    LOCCTR = HexUtil.addHex(LOCCTR, Integer.toString(1));
+
+                } else if (currentLine.getOPCODE().equals("END")) {
+                    intermediateFile.write("\t" + input);
+                    intermediateFile.newLine();
+                    break;
+                } else if (currentLine.getOPCODE().equals("EQU") || currentLine.getOPCODE().equals("USE") || currentLine.getOPCODE().equals("CSECT")) {
+                    intermediateFile.write("Operation on line number " + lineNum + " is not supported.");
+                    intermediateFile.newLine();
+                } else if(currentLine.getOPCODE().equals("BASE")){
+
+                }else{
+
+                    error = true;
+
+                    intermediateFile.write("OPCODE on line " + lineNum + " not found. Please verify spelling.");
+                    intermediateFile.newLine();
+
+                }
+                LOCCTR = HexUtil.formatLOCCTR(LOCCTR);
+
+                //write line to .lst
+                intermediateFile.write(intermediateLine(preLOCCTR, lineNum, input));
+                intermediateFile.newLine();
+                
 
                 format4 = false;
                 // END OF FILE READ
@@ -159,32 +192,56 @@ public class Assembler {
             inputFile.close();
         } catch (Exception e) {
             System.out.println("An unexpected error has occurred. Please try again.");
-
-            e.printStackTrace();
+            //e.printStackTrace();
         }
         if(error == true){
             return "-1";
         }
         return LOCCTR;
     }
-
+    /**
+     * Pass two of the assembler - reads in lines from intermediate file and generates object code
+     * @param filename
+     * @param LOCCTR
+     * @param SYMTAB
+     * @param OPTAB 
+     */
     public static void passTwo(String filename, String LOCCTR, Hashtable<String, Symbol> SYMTAB, Hashtable<String, Operation> OPTAB) {
-        
+        //variable declarations
+        int lineNum = 0, format;
+        String objectCode = "", operand = "",BASE = "", currentStartingAddress="",lengthOfObjectCodeInHalfBytes = "0",currentTextRecordLength = "0000";
+        String[] cLine = new String[2];
+        StringBuilder textRecord = new StringBuilder();
+        boolean error = false, isBase = false, codeBreak = false, lineFull = true;
+        ArrayList<String> modificationLines = new ArrayList<>();
+        Symbol currentSymbol;
+       
         try {
-            int lineNum = 0;
-            String currentTextRecordLength = "0000";
-            StringBuilder textRecord = new StringBuilder();
-            String BASE = "";
-            boolean error = false;
-            boolean isComment = false;
+            
             BufferedReader intermediateFile = new BufferedReader(new FileReader(filename + ".lst"));
             BufferedWriter objectFile = new BufferedWriter(new FileWriter(filename + ".obj"));
-            //read first line and parse
+            
+            //read in first line
             String input = intermediateFile.readLine();
+            
+            //check for comments in line
+            while (input.contains(".")){
+                cLine = parseComment(input);
+                String trim = cLine[0].trim();
+                //skips line if only a comment
+                if(Integer.toString(lineNum).equals(trim)){
+                    input = intermediateFile.readLine();
+                }
+                //parses only source code
+                else{
+                    IntermediateLine line = LineParser.parseLinePassTwo(cLine[0]);
+                }
+            }
             lineNum++;
             IntermediateLine line = LineParser.parseLinePassTwo(input);
             String startLoc = "000000";
             
+            //check if first line contains start
             if (line.getOPCODE().equals("START")){
                 String progName = line.getSYMBOL();
                 startLoc = line.getOPERAND();
@@ -197,131 +254,135 @@ public class Assembler {
                 startLoc = "000000"; //set starting location to 0 if there is no start line
             }
 
-            ArrayList<String> modificationLines = new ArrayList<String>();
-
-            boolean isBase = false;
-            boolean codeBreak = false;
-            int format;
-            String objectCode = "";
-            String operand = "";
-
-            boolean lineFull = true;
-            String currentStartingAddress="";
-            Symbol currentSymbol;
-            String lengthOfObjectCodeInHalfBytes = "0";
-            
-
-            while ((input = intermediateFile.readLine()) != null && !(line.getOPCODE().equals("END"))) {			
+            //while loop that reads file until it encounters the end
+            while ((input = intermediateFile.readLine()) != null) {
+                //increase line count
                 lineNum++;
-                line = LineParser.parseLinePassTwo(input);
+                
+                //check if line is comment
+                if (input.contains(".")){
+                    cLine = parseComment(input);
+                    String trim = cLine[0].trim();
+                    //skips line if entire line is a comment
+                    if(Integer.toString(lineNum).equals(trim)){
+                        input = intermediateFile.readLine();
+                        line = LineParser.parseLinePassTwo(input);
+                    }
+                    //parses only source code
+                    else
+                        line = LineParser.parseLinePassTwo(cLine[0]);
+                    
+                }
+                else
+                    line = LineParser.parseLinePassTwo(input);
+                
+                //if after parsing the OPCODE = END - break from while loop
+                if (line.getOPCODE().equals("END"))
+                    break;
+                
+                if(lineFull){
+                    currentStartingAddress = line.LOCCTR;
+                    lineFull = false;
+                }
 
-                    if (!isComment(input)) {
-                        //line is not comment
-                        if(lineFull){
-                            currentStartingAddress = line.LOCCTR;
-                            lineFull = false;
+                if(line.OPCODE.equals("BASE")){
+                    BASE = SYMTAB.get(line.OPERAND).getMemoryLocation();
+                //check if OPCODE is in OPTAB
+                }else if (OPTAB.get(line.getOPCODE()) != null){
+
+                    if (line.getOPERAND() != null) {
+                        //symbol found in SYMTAB
+                        if ((currentSymbol = SYMTAB.get(line.getOPERAND())) != null) {
+                            operand = currentSymbol.getMemoryLocation();
+                        } else if(!input.contains("#")) {
+                            System.out.println("ERROR!!!! SETTING operand to 0000 on line num " + lineNum);
+                            operand = "0000";
+                            error = true;
                         }
-
-                        if(line.OPCODE.equals("BASE")){
-                            BASE = SYMTAB.get(line.OPERAND).getMemoryLocation();
-                        //check if OPCODE is in OPTAB
-                        }else if (OPTAB.get(line.getOPCODE()) != null){
-                            
-                            if (line.getOPERAND() != null) {
-                                //symbol found in SYMTAB
-                                if ((currentSymbol = SYMTAB.get(line.getOPERAND())) != null) {
-                                    operand = currentSymbol.getMemoryLocation();
-                                } else if(!input.contains("#")) {
-                                    System.out.println("ERROR!!!! SETTING operand to 0000 on line num " + lineNum);
-                                    operand = "0000";
-                                    error = true;
+                        //end has Symbol
+                    } else {
+                        System.out.println("SETTING OPERAND TO 0000 on line " + lineNum);
+                        operand = "0000";
+                    }
+                    format = OPTAB.get(line.getOPCODE()).getFormat();
+                    if (line.getFormat4()) {
+                        format = 4;
+                    }
+                    if (line.getOPCODE().equals("BASE")) {
+                        BASE = SYMTAB.get(line.getOPERAND()).getMemoryLocation();
+                        isBase = true;
+                    }else if(line.OPCODE.equals("RSUB")){
+                        objectCode = "4F0000";
+                        lengthOfObjectCodeInHalfBytes = "6";
+                    }else{
+                        //test for break in code to force new text record. occurs after arrays and variables			
+                        if (format != -1 && !isBase) {
+                            int n = 0, i = 0, x = 0, e = 0;
+                            if (format == 1) {
+                                lengthOfObjectCodeInHalfBytes = "2";
+                            } else if (format == 2) {
+                                if (line.OPERAND2 != null){
+                                //need a way to split registers or identify single register
+                                    objectCode = HexUtil.buildFormat2(OPTAB.get(line.OPCODE).getOpCode(), line.OPERAND, line.OPERAND2);
+                                }else{
+                                   objectCode = HexUtil.buildFormat2(OPTAB.get(line.OPCODE).getOpCode(), line.OPERAND, ""); 
                                 }
-                                //end has Symbol
-                            } else {
-                                System.out.println("SETTING OPERAND TO 0000 on line " + lineNum);
-                                operand = "0000";
-                            }
-                            format = OPTAB.get(line.getOPCODE()).getFormat();
-                            if (line.getFormat4()) {
-                                format = 4;
-                            }
-                            if (line.getOPCODE().equals("BASE")) {
-                                BASE = SYMTAB.get(line.getOPERAND()).getMemoryLocation();
-                                isBase = true;
-                            }else if(line.OPCODE.equals("RSUB")){
-                                objectCode = "4F0000";
-                                lengthOfObjectCodeInHalfBytes = "6";
-                            }else{
-                                //test for break in code to force new text record. occurs after arrays and variables			
-                                if (format != -1 && !isBase) {
-                                    int n = 0, i = 0, x = 0, e = 0;
-                                    if (format == 1) {
-                                        lengthOfObjectCodeInHalfBytes = "2";
-                                    } else if (format == 2) {
-                                        if (line.OPERAND2 != null){
-                                        //need a way to split registers or identify single register
-                                            objectCode = HexUtil.buildFormat2(OPTAB.get(line.OPCODE).getOpCode(), line.OPERAND, line.OPERAND2);
-                                        }else{
-                                           objectCode = HexUtil.buildFormat2(OPTAB.get(line.OPCODE).getOpCode(), line.OPERAND, ""); 
-                                        }
-                                        lengthOfObjectCodeInHalfBytes = "4";
-                                    } else if (format == 3) {
-                                        //need a way to identify index
-                                        if (input.contains(",")){
-                                            x = 1;
-                                        }
-                                        
-                                        if(input.contains("#")) {
-                                            if (SYMTAB.get(line.OPERAND) != null) {
-                                                operand = SYMTAB.get(line.OPERAND).getMemoryLocation();
-                                                System.out.println("Searching in SYMTAB for OPERAND: " + SYMTAB.get(line.OPERAND).getLabel() + " " + SYMTAB.get(line.OPERAND).getMemoryLocation());
-                                                n = 0;
-                                                i = 1;
-                                            } else {
-                                                n=0;
-                                                i=1;
-                                                String temp;
-                                                temp = HexUtil.decimalToHex(Integer.parseInt(line.OPERAND), false);
-                                                operand = temp;
-                                            }
-                                            //System.out.println("Op for line " + lineNum + " is " + OPTAB.get(line.OPCODE).getOpCode());
-                                            objectCode = HexUtil.buildFormat3Direct(n, i, 0, OPTAB.get(line.OPCODE).getOpCode(), operand);
-                                        }else{
-                                            n=1;
-                                            i=1;
-                                            objectCode = HexUtil.buildFormat3(n, i, x, 0, OPTAB.get(line.OPCODE).getOpCode(), operand, HexUtil.addHex(line.LOCCTR, "3"), BASE);
-                                        }
-                                        
-                                        lengthOfObjectCodeInHalfBytes = "6";
-                                        
-                                    }else if (format == 4){
-                                        
-                                        if (input.contains(",")){
-                                                                x = 1;
-                                                            }
+                                lengthOfObjectCodeInHalfBytes = "4";
+                            } else if (format == 3) {
+                                //need a way to identify index
+                                if (input.contains(",")){
+                                    x = 1;
+                                }
 
-                                        if(input.contains("#")){
-                                            if (SYMTAB.get(line.OPERAND) != null){
-                                                operand = SYMTAB.get(line.OPERAND).getMemoryLocation();
-                                                n = 0;
-                                                i = 1;
-                                            }else{
-                                                String temp;
-                                                temp = HexUtil.decimalToHex(Integer.parseInt(line.OPERAND), false);
-                                                operand = temp;
-                                            }
-                                        }else{
-                                            n=1;
-                                            i=1;
-                                        }
-                                        modificationLines.add(modLine(line.LOCCTR));
-                                        lengthOfObjectCodeInHalfBytes = "8";
-                                        objectCode = HexUtil.buildFormat4(n, i, x, 1, OPTAB.get(line.OPCODE).getOpCode(), operand);
+                                if(input.contains("#")) {
+                                    if (SYMTAB.get(line.OPERAND) != null) {
+                                        operand = SYMTAB.get(line.OPERAND).getMemoryLocation();
+                                        System.out.println("Searching in SYMTAB for OPERAND: " + SYMTAB.get(line.OPERAND).getLabel() + " " + SYMTAB.get(line.OPERAND).getMemoryLocation());
+                                        n = 0;
+                                        i = 1;
+                                    } else {
+                                        n=0;
+                                        i=1;
+                                        String temp;
+                                        temp = HexUtil.decimalToHex(Integer.parseInt(line.OPERAND), false);
+                                        operand = temp;
                                     }
+                                    //System.out.println("Op for line " + lineNum + " is " + OPTAB.get(line.OPCODE).getOpCode());
+                                    objectCode = HexUtil.buildFormat3Direct(n, i, 0, OPTAB.get(line.OPCODE).getOpCode(), operand);
+                                }else{
+                                    n=1;
+                                    i=1;
+                                    objectCode = HexUtil.buildFormat3(n, i, x, 0, OPTAB.get(line.OPCODE).getOpCode(), operand, HexUtil.addHex(line.LOCCTR, "3"), BASE);
                                 }
+
+                                lengthOfObjectCodeInHalfBytes = "6";
+
+                            }else if (format == 4){
+
+                                if (input.contains(",")){
+                                                        x = 1;
+                                }
+
+                                if(input.contains("#")){
+                                    if (SYMTAB.get(line.OPERAND) != null){
+                                        operand = SYMTAB.get(line.OPERAND).getMemoryLocation();
+                                        n = 0;
+                                        i = 1;
+                                    }else{
+                                        String temp;
+                                        temp = HexUtil.decimalToHex(Integer.parseInt(line.OPERAND), false);
+                                        operand = temp;
+                                    }
+                                }else{
+                                    n=1;
+                                    i=1;
+                                }
+                                modificationLines.add(modLine(line.LOCCTR));
+                                lengthOfObjectCodeInHalfBytes = "8";
+                                objectCode = HexUtil.buildFormat4(n, i, x, 1, OPTAB.get(line.OPCODE).getOpCode(), operand);
                             }
-
-
+                        }
+                    }
                     if (HexUtil.hexToDecimal((HexUtil.addHex(currentTextRecordLength, lengthOfObjectCodeInHalfBytes))) > 60 || codeBreak) {
                        //create new text record and write current to .obj file
                        String textLine = textLine(currentStartingAddress, textRecord.toString());
@@ -358,7 +419,6 @@ public class Assembler {
                    } else {
                         currentTextRecordLength = HexUtil.addHex(currentTextRecordLength, lengthOfObjectCodeInHalfBytes);
                         textRecord.append(objectCode.toUpperCase());
-
                    }
 
                 }else if(line.getOPCODE().equals("RESW") || line.getOPCODE().equals("RESB")){
@@ -379,8 +439,6 @@ public class Assembler {
                     lineFull = false;
                     codeBreak = false;
                 }
-                //end isComment if statement
-                }
             //end while loop reading input       
             }
 			 
@@ -389,28 +447,40 @@ public class Assembler {
                 objectFile.newLine();
             }
             
+            //write end line
             objectFile.write(endLine(startLoc).toUpperCase());
-     
+            //close file
             objectFile.close();
             
         //end of try    
         } catch (Exception e2) {
-
+            System.out.println("An unexpected error has occurred. Please try again.");
             e2.printStackTrace();
         }
 
     //END PASS 2
     }
-	
-	public static boolean isComment(String line){
-		String[] splitArray = line.split("\\s+");
-
-		if(splitArray[0].equals("."))
-			return true;
-		else
-			return false;
-	}
-    
+    /**
+     * Method to parse souce code and comment and story in string array
+     * @param line
+     * @return 
+     */
+    public static String[] parseComment(String line){
+        String[] cLine = new String[2];
+        int index = line.indexOf(".");
+        String line1 = line.substring(0, index);
+        String line2 = line.substring(index, line.length());
+        cLine[0] = line1;
+        cLine[1] = line2;
+        return cLine;
+    }
+    /**
+     * Build header line for object program
+     * @param progName
+     * @param startingAddress
+     * @param progLength
+     * @return 
+     */
     public static String headerLine(String progName, String startingAddress, String progLength){
        StringBuilder builder = new StringBuilder();
        builder.append("H");
@@ -419,16 +489,20 @@ public class Assembler {
        for(int i = 0; i < 6 - progName.length(); i++){
            builder.append(" ");
        }
-
        startingAddress = HexUtil.formatAddress(startingAddress);
-        System.out.println("Starting address is " + startingAddress);
+       System.out.println("Starting address is " + startingAddress);
        builder.append(startingAddress);
        progLength = HexUtil.formatAddress(progLength);
-        System.out.println("Prog length is " + progLength);
+       System.out.println("Prog length is " + progLength);
        builder.append(progLength);
        return builder.toString();
     }
-    
+    /**
+     * Build text line for object program
+     * @param startingAddress
+     * @param objectCode
+     * @return 
+     */
     public static String textLine(String startingAddress, String objectCode){
         StringBuilder builder = new StringBuilder();
         builder.append("T");
@@ -438,21 +512,36 @@ public class Assembler {
         return builder.toString();
         
     }
+    /**
+     * build endline for object program
+     * @param startingAddress
+     * @return 
+     */
     public static String endLine(String startingAddress){
         StringBuilder builder = new StringBuilder();
         builder.append("E");
         builder.append(HexUtil.formatAddress(startingAddress));
         return builder.toString();
     }
+    /**
+     * build modification lines for object program
+     * @param startingAddress
+     * @return 
+     */
     public static String modLine(String startingAddress){
         StringBuilder builder = new StringBuilder();
         builder.append("M");
         builder.append(HexUtil.formatAddress(HexUtil.addHex(startingAddress, "1")));
         builder.append("05");
-        return builder.toString();
-        
+        return builder.toString();   
     }
-
+    /**
+     * builds line to be written in intermediate file created in pass one
+     * @param LOCCTR
+     * @param lineNum
+     * @param currentLine
+     * @return 
+     */
     public static String intermediateLine(String LOCCTR, int lineNum, String currentLine) {
         //builds the line for writing to file
         StringBuilder lineBuilder = new StringBuilder();
@@ -462,10 +551,11 @@ public class Assembler {
         lineBuilder.append("\t");
         lineBuilder.append(currentLine);
         return lineBuilder.toString().toUpperCase();
-
     }
 }
-
+/**
+ * Class to parse lines from source code for pass one and from intermediate file for pass two
+ */
 class LineParser {
     //used to parse each line of input and determine format 3/4
 
@@ -483,7 +573,7 @@ class LineParser {
             //System.out.print("Array size is: " + splitArray.length + "\n");
             //if(input.contains("+"))
             //format4 = true;
-            if(splitArray[0].equals("END")){
+            if(splitArray[1].equals("END")){
                 OPCODE = "END";
                 line = new IntermediateLine(LOCCTR, OPCODE, TARGET);
             }else if (splitArray.length == 5) {
