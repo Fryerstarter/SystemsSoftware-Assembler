@@ -1,4 +1,4 @@
-package syssoftware_project;
+
 import java.util.*;
 import java.io.*;
 /**
@@ -6,10 +6,19 @@ import java.io.*;
  * COP3404 Fall 2017
  * DUE: NOVEMBER 30 2017
  * Build a two pass assembler that assembles SIC/XE instructions
+ * TODO
+ * handle # instructions
+ * 2's complement bug
+ * mod records for # and format 4 instructions
+ * starting address wrong
+ * printing textlines incorrectly
+ * toUpperCase when searching OPTAB but not SYMTAB
  * NOT INLUCDED:
  *  -literals & floating point instructions
  *  -EQU, USE, CSECT directives
  *  -HIO,LPS,SKK,STI,STSW,SVC,SIO,TIO instructions
+ *  -Macros and program blocks
+ *  need to handle blank lines in input file
  */
 public class Assembler {
     /**
@@ -34,8 +43,12 @@ public class Assembler {
         //if no errors, run Pass Two
         }else{
             System.out.println("PASS 2 STARTING");
-            passTwo(args[0], LOCCTR, SYMTAB, OPTAB);
+            int error = passTwo(args[0], LOCCTR, SYMTAB, OPTAB);
             System.out.println("pass 2 done");
+            System.out.println("error value is " + error);
+            if(error == -1){
+            	System.out.println("Object code generation failed");
+            }
         }
     }
     /**
@@ -90,7 +103,7 @@ public class Assembler {
             intermediateFile.write(intermediateLine(LOCCTR, lineNum, input));
             intermediateFile.newLine();
             
-            while ((input = inputFile.readLine()) != null && !(currentLine.getOPCODE().equals("END"))) {
+            while ((input = inputFile.readLine()) != null) {
                 while (input.startsWith(".")){
                     lineNum++;
                     intermediateFile.write(lineNum + "\t" + input);
@@ -103,6 +116,9 @@ public class Assembler {
                 }
                 else
                     currentLine = LineParser.parseLinePassOne(input);
+                
+                if(currentLine.getOPCODE().equals("END"))
+                	break;
                 
                 if (input.contains("+")) {
                     format4 = true;
@@ -136,10 +152,11 @@ public class Assembler {
 
                 //determine what to add to LOCCTR for next instruction
 
-                if ((currentOp = OPTAB.get(currentLine.getOPCODE())) != null) {
+                if ((currentOp = OPTAB.get(currentLine.getOPCODE().toUpperCase())) != null) {
                     if (currentOp.getFormat() == -1) {
                         intermediateFile.write("Operation on line number " + lineNum + " is not supported.");
                         intermediateFile.newLine();
+                        error = true;
                     } else if (format4) {
                         format = 4;
                     } else {
@@ -206,7 +223,7 @@ public class Assembler {
      * @param SYMTAB
      * @param OPTAB 
      */
-    public static void passTwo(String filename, String LOCCTR, Hashtable<String, Symbol> SYMTAB, Hashtable<String, Operation> OPTAB) {
+    public static int passTwo(String filename, String LOCCTR, Hashtable<String, Symbol> SYMTAB, Hashtable<String, Operation> OPTAB) {
         //variable declarations
         int lineNum = 0, format;
         String objectCode = "", operand = "",BASE = "", currentStartingAddress="",lengthOfObjectCodeInHalfBytes = "0",currentTextRecordLength = "0000";
@@ -225,7 +242,7 @@ public class Assembler {
             String input = intermediateFile.readLine();
             
             //check for comments in line
-            while (input.contains(".")){
+            while (input != null && input.contains(".")){
                 cLine = parseComment(input);
                 String trim = cLine[0].trim();
                 //skips line if only a comment
@@ -294,7 +311,10 @@ public class Assembler {
                         //symbol found in SYMTAB
                         if ((currentSymbol = SYMTAB.get(line.getOPERAND())) != null) {
                             operand = currentSymbol.getMemoryLocation();
-                        } else if(!input.contains("#")) {
+                        } else if(HexUtil.isRegister(line.getOPERAND())){
+                        	operand = HexUtil.getRegister(line.getOPERAND());
+                        }else if(!input.contains("#")) {
+                        
                             System.out.println("ERROR!!!! SETTING operand to 0000 on line num " + lineNum);
                             operand = "0000";
                             error = true;
@@ -389,7 +409,7 @@ public class Assembler {
                        textRecord = new StringBuilder();
                        objectFile.write(textLine);
                        objectFile.newLine();
-                       lineFull = false;
+                       lineFull = true;
                        codeBreak = false;
                        textRecord.append(objectCode.toUpperCase());
                         System.out.println("Object code for line " + lineNum + " is: " + objectCode.toUpperCase());
@@ -404,17 +424,25 @@ public class Assembler {
                     System.out.println("Object code for line " + lineNum + " is: " + objectCode.toUpperCase());
                     lengthOfObjectCodeInHalfBytes = "6";
                     //machine code = hex rep of decimal
+                    if(objectCode.equals("-1")){
+                		error = true;
+                	}
                     if (HexUtil.hexToDecimal((HexUtil.addHex(currentTextRecordLength, lengthOfObjectCodeInHalfBytes))) > 60 || codeBreak) {
                         //create new text record and write current to .obj file
+                    	if(objectCode.equals("-1")){
+                    		error = true;
+                    	}
                         String textLine = textLine(currentStartingAddress, textRecord.toString());
                         textRecord = new StringBuilder();
                         currentTextRecordLength = "0";
                         objectFile.write(textLine);
                         objectFile.newLine();
-                        lineFull = false;
+                        lineFull = true;
                         codeBreak = false;
                         textRecord.append(objectCode.toUpperCase());
+                        
                         currentTextRecordLength = HexUtil.addHex(currentTextRecordLength, lengthOfObjectCodeInHalfBytes);
+                        currentTextRecordLength = HexUtil.formatDisplacement(currentTextRecordLength, 2);
                         System.out.println("Object code for line " + lineNum + " is: " + objectCode.toUpperCase());
                    } else {
                         currentTextRecordLength = HexUtil.addHex(currentTextRecordLength, lengthOfObjectCodeInHalfBytes);
@@ -426,7 +454,7 @@ public class Assembler {
                    codeBreak = true;
                 }else{
                     //operation unsupported
-                    System.out.println("Operation unsupported, error! " + line.getOPCODE());
+                    System.out.println("Operation unsupported, error! " + line.getOPCODE() + " " + lineNum);
                     error = true;
                 }
 
@@ -454,10 +482,14 @@ public class Assembler {
             
         //end of try    
         } catch (Exception e2) {
-            System.out.println("An unexpected error has occurred. Please try again.");
+            System.out.println("An unexpected error has occurred on line " + lineNum +". Please try again.");
             e2.printStackTrace();
         }
-
+        if(error == true){
+        	return -1;
+        }else{
+        	return 0;
+        }
     //END PASS 2
     }
     /**
@@ -507,7 +539,7 @@ public class Assembler {
         StringBuilder builder = new StringBuilder();
         builder.append("T");
         builder.append(HexUtil.formatAddress(startingAddress));
-        builder.append(HexUtil.decimalToHex((objectCode.length() / 2), false).toUpperCase());
+        builder.append(HexUtil.formatDisplacement(HexUtil.decimalToHex((objectCode.length() / 2), false).toUpperCase(), 2));
         builder.append(objectCode);
         return builder.toString();
         
@@ -628,7 +660,7 @@ class LineParser {
                     String TARGET2 = target[1];
                     if(HexUtil.isRegister(TARGET1)){
                         System.out.println("ITS A REGISTER!");
-                        line = new IntermediateLine(LOCCTR, OPCODE, TARGET1, TARGET2);
+                        line = new IntermediateLine(LOCCTR, "", OPCODE, TARGET1, TARGET2);
                     }else{
                         line = new IntermediateLine(LOCCTR, SYMBOL, OPCODE, TARGET1);
                     }
@@ -978,7 +1010,9 @@ class HexUtil {
         //pads the displacement with 0's to meet required length. supports format 3 and format 4 instructions.
         int requiredLength = 0;
         StringBuilder fDisp = new StringBuilder();
-        if (format == 3) {
+        if(format == 2){
+        	requiredLength = 2;
+        }else if (format == 3) {
             requiredLength = 3;
 
         } else if (format == 4) {
