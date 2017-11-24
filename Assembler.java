@@ -104,107 +104,110 @@ public class Assembler {
             intermediateFile.newLine();
             
             while ((input = inputFile.readLine()) != null) {
-                while (input.startsWith(".")){
-                    lineNum++;
-                    intermediateFile.write(lineNum + "\t" + input);
-                    intermediateFile.newLine();
-                    input = inputFile.readLine();
-                }
-                if (input.contains(".")){
-                    cLine = parseComment(input);
-                    currentLine = LineParser.parseLinePassOne(cLine[0]);
-                }
-                else
-                    currentLine = LineParser.parseLinePassOne(input);
-                
-                if(currentLine.getOPCODE().equals("END"))
-                	break;
-                
-                if (input.contains("+")) {
-                    format4 = true;
-                }
-                
-                lineNum++;
-
-                //check for label in the line
-                if (currentLine.getSYMBOL() != null) {
-                    Symbol currentSymbol = SYMTAB.get(currentLine.getSYMBOL());
-
-                    if (SYMTAB.get(currentLine.getSYMBOL()) != null && !(currentLine.getSYMBOL().equals("")) && !(currentLine.getSYMBOL().isEmpty())) {
-
-                        //SYMBOL already in SYMTAB, set error
-                        error = true;
-
-                        intermediateFile.write("Duplicate symbol: " + currentLine.getSYMBOL().toUpperCase() + "on line " + lineNum);
+                String tempInput;
+                tempInput = input.replaceAll("\\s+", "");
+                if (tempInput.length() > 0) {
+                    while (input.startsWith(".")) {
+                        lineNum++;
+                        intermediateFile.write(lineNum + "\t" + input);
                         intermediateFile.newLine();
-                    } else {
-
-                        //SYMBOL not found in SYMTAB, enter into SYMTAB
-
-                        SYMTAB.put(currentLine.getSYMBOL().toUpperCase(), new Symbol(currentLine.getSYMBOL().toUpperCase(), LOCCTR));
+                        input = inputFile.readLine();
                     }
-                }
+                    if (input.contains(".")) {
+                        cLine = parseComment(input);
+                        currentLine = LineParser.parseLinePassOne(cLine[0]);
+                    } else
+                        currentLine = LineParser.parseLinePassOne(input);
 
-                //save current LOCCTR for memory location
-                String preLOCCTR = LOCCTR;
+                    if (currentLine.getOPCODE().equals("END"))
+                        break;
 
-                Operation currentOp;
+                    if (input.contains("+")) {
+                        format4 = true;
+                    }
 
-                //determine what to add to LOCCTR for next instruction
+                    lineNum++;
 
-                if ((currentOp = OPTAB.get(currentLine.getOPCODE().toUpperCase())) != null) {
-                    if (currentOp.getFormat() == -1) {
+                    //check for label in the line
+                    if (currentLine.getSYMBOL() != null) {
+                        Symbol currentSymbol = SYMTAB.get(currentLine.getSYMBOL());
+
+                        if (SYMTAB.get(currentLine.getSYMBOL()) != null && !(currentLine.getSYMBOL().equals("")) && !(currentLine.getSYMBOL().isEmpty())) {
+
+                            //SYMBOL already in SYMTAB, set error
+                            error = true;
+
+                            intermediateFile.write("Duplicate symbol: " + currentLine.getSYMBOL().toUpperCase() + "on line " + lineNum);
+                            intermediateFile.newLine();
+                        } else {
+
+                            //SYMBOL not found in SYMTAB, enter into SYMTAB
+
+                            SYMTAB.put(currentLine.getSYMBOL().toUpperCase(), new Symbol(currentLine.getSYMBOL().toUpperCase(), LOCCTR));
+                        }
+                    }
+
+                    //save current LOCCTR for memory location
+                    String preLOCCTR = LOCCTR;
+
+                    Operation currentOp;
+
+                    //determine what to add to LOCCTR for next instruction
+
+                    if ((currentOp = OPTAB.get(currentLine.getOPCODE().toUpperCase())) != null) {
+                        if (currentOp.getFormat() == -1) {
+                            intermediateFile.write("Operation on line number " + lineNum + " is not supported.");
+                            intermediateFile.newLine();
+                            error = true;
+                        } else if (format4) {
+                            format = 4;
+                        } else {
+                            format = currentOp.getFormat();
+                        }
+                        LOCCTR = HexUtil.addHex(LOCCTR, HexUtil.decimalToHex((long) format, false));
+
+                    } else if (currentLine.getOPCODE().equals("WORD")) {
+                        LOCCTR = HexUtil.addHex(LOCCTR, Integer.toString(3));
+                    } else if (currentLine.getOPCODE().equals("RESW")) {
+                        int memAdd = 3 * Integer.parseInt(currentLine.getOPERAND());
+                        String memAddHex = HexUtil.decimalToHex(memAdd, false);
+                        LOCCTR = HexUtil.addHex(LOCCTR, memAddHex);
+                    } else if (currentLine.getOPCODE().equals("RESB")) {
+                        System.out.println("RESB found, value of operand is :" + Integer.toString(Integer.parseInt(currentLine.getOPERAND())));
+                        LOCCTR = HexUtil.addHex(LOCCTR, HexUtil.decimalToHex(Integer.parseInt(currentLine.getOPERAND()), false));
+
+                    } else if (currentLine.getOPCODE().equals("BYTE")) {
+                        LOCCTR = HexUtil.addHex(LOCCTR, Integer.toString(1));
+
+                    } else if (currentLine.getOPCODE().equals("END")) {
+                        intermediateFile.write("\t" + input);
+                        intermediateFile.newLine();
+                        break;
+                    } else if (currentLine.getOPCODE().equals("EQU") || currentLine.getOPCODE().equals("USE") || currentLine.getOPCODE().equals("CSECT")) {
                         intermediateFile.write("Operation on line number " + lineNum + " is not supported.");
                         intermediateFile.newLine();
-                        error = true;
-                    } else if (format4) {
-                        format = 4;
+                    } else if (currentLine.getOPCODE().equals("BASE")) {
+
                     } else {
-                        format = currentOp.getFormat();
+
+                        error = true;
+
+                        intermediateFile.write("OPCODE on line " + lineNum + " not found. Please verify spelling.");
+                        intermediateFile.newLine();
+
                     }
-                    LOCCTR = HexUtil.addHex(LOCCTR, HexUtil.decimalToHex((long) format, false));
 
-                } else if (currentLine.getOPCODE().equals("WORD")) {
-                    LOCCTR = HexUtil.addHex(LOCCTR, Integer.toString(3));
-                } else if (currentLine.getOPCODE().equals("RESW")) {
-                    int memAdd = 3 * Integer.parseInt(currentLine.getOPERAND());
-                    String memAddHex = HexUtil.decimalToHex(memAdd, false);
-                    LOCCTR = HexUtil.addHex(LOCCTR, memAddHex);
-                } else if (currentLine.getOPCODE().equals("RESB")) {
-                    System.out.println("RESB found, value of operand is :" + Integer.toString(Integer.parseInt(currentLine.getOPERAND())));
-                    LOCCTR = HexUtil.addHex(LOCCTR, HexUtil.decimalToHex(Integer.parseInt(currentLine.getOPERAND()), false));
+                    LOCCTR = HexUtil.formatLOCCTR(LOCCTR);
 
-                } else if (currentLine.getOPCODE().equals("BYTE")) {
-                    LOCCTR = HexUtil.addHex(LOCCTR, Integer.toString(1));
-
-                } else if (currentLine.getOPCODE().equals("END")) {
-                    intermediateFile.write("\t" + input);
-                    intermediateFile.newLine();
-                    break;
-                } else if (currentLine.getOPCODE().equals("EQU") || currentLine.getOPCODE().equals("USE") || currentLine.getOPCODE().equals("CSECT")) {
-                    intermediateFile.write("Operation on line number " + lineNum + " is not supported.");
-                    intermediateFile.newLine();
-                } else if(currentLine.getOPCODE().equals("BASE")){
-
-                }else{
-
-                    error = true;
-
-                    intermediateFile.write("OPCODE on line " + lineNum + " not found. Please verify spelling.");
+                    //write line to .lst
+                    intermediateFile.write(intermediateLine(preLOCCTR, lineNum, input));
                     intermediateFile.newLine();
 
+
+                    format4 = false;
+                    // END OF FILE READ
                 }
-                LOCCTR = HexUtil.formatLOCCTR(LOCCTR);
-
-                //write line to .lst
-                intermediateFile.write(intermediateLine(preLOCCTR, lineNum, input));
-                intermediateFile.newLine();
-                
-
-                format4 = false;
-                // END OF FILE READ
             }
-
             intermediateFile.close();
             inputFile.close();
         } catch (Exception e) {
@@ -273,48 +276,48 @@ public class Assembler {
 
             //while loop that reads file until it encounters the end
             while ((input = intermediateFile.readLine()) != null) {
-                //increase line count
-                lineNum++;
-                
+                codeBreak = false;
+                String tempInput;
+                tempInput = input.replaceAll("\\s+", "");
+                if (tempInput.length() > 0){
+                    //increase line count
+                    lineNum++;
+
                 //check if line is comment
-                if (input.contains(".")){
+                if (input.contains(".")) {
                     cLine = parseComment(input);
                     String trim = cLine[0].trim();
                     //skips line if entire line is a comment
-                    if(Integer.toString(lineNum).equals(trim)){
+                    if (Integer.toString(lineNum).equals(trim)) {
                         input = intermediateFile.readLine();
                         line = LineParser.parseLinePassTwo(input);
                     }
                     //parses only source code
                     else
                         line = LineParser.parseLinePassTwo(cLine[0]);
-                    
-                }
-                else
+
+                } else
                     line = LineParser.parseLinePassTwo(input);
-                
+
                 //if after parsing the OPCODE = END - break from while loop
                 if (line.getOPCODE().equals("END"))
                     break;
-                
-                if(lineFull){
-                    currentStartingAddress = line.LOCCTR;
-                    lineFull = false;
-                }
 
-                if(line.OPCODE.equals("BASE")){
+
+
+                if (line.OPCODE.equals("BASE")) {
                     BASE = SYMTAB.get(line.OPERAND).getMemoryLocation();
-                //check if OPCODE is in OPTAB
-                }else if (OPTAB.get(line.getOPCODE()) != null){
+                    //check if OPCODE is in OPTAB
+                } else if (OPTAB.get(line.getOPCODE()) != null) {
 
                     if (line.getOPERAND() != null) {
                         //symbol found in SYMTAB
                         if ((currentSymbol = SYMTAB.get(line.getOPERAND())) != null) {
                             operand = currentSymbol.getMemoryLocation();
-                        } else if(HexUtil.isRegister(line.getOPERAND())){
-                        	operand = HexUtil.getRegister(line.getOPERAND());
-                        }else if(!input.contains("#")) {
-                        
+                        } else if (HexUtil.isRegister(line.getOPERAND())) {
+                            operand = HexUtil.getRegister(line.getOPERAND());
+                        } else if (!input.contains("#")) {
+
                             System.out.println("ERROR!!!! SETTING operand to 0000 on line num " + lineNum);
                             operand = "0000";
                             error = true;
@@ -331,35 +334,66 @@ public class Assembler {
                     if (line.getOPCODE().equals("BASE")) {
                         BASE = SYMTAB.get(line.getOPERAND()).getMemoryLocation();
                         isBase = true;
-                    }else if(line.OPCODE.equals("RSUB")){
+                    } else if (line.OPCODE.equals("RSUB")) {
                         objectCode = "4F0000";
                         lengthOfObjectCodeInHalfBytes = "6";
-                    }else{
+                    } else {
                         //test for break in code to force new text record. occurs after arrays and variables			
                         if (format != -1 && !isBase) {
                             int n = 0, i = 0, x = 0, e = 0;
                             if (format == 1) {
                                 lengthOfObjectCodeInHalfBytes = "2";
                             } else if (format == 2) {
-                                if (line.OPERAND2 != null){
-                                //need a way to split registers or identify single register
+                                if (line.OPERAND2 != null) {
+                                    //need a way to split registers or identify single register
                                     objectCode = HexUtil.buildFormat2(OPTAB.get(line.OPCODE).getOpCode(), line.OPERAND, line.OPERAND2);
-                                }else{
-                                   objectCode = HexUtil.buildFormat2(OPTAB.get(line.OPCODE).getOpCode(), line.OPERAND, ""); 
+                                } else {
+                                    objectCode = HexUtil.buildFormat2(OPTAB.get(line.OPCODE).getOpCode(), line.OPERAND, "");
                                 }
                                 lengthOfObjectCodeInHalfBytes = "4";
                             } else if (format == 3) {
                                 //need a way to identify index
-                                if (input.contains(",")){
+                                if (input.contains(",")) {
                                     x = 1;
                                 }
 
-                                if(input.contains("#")) {
+                                if (input.contains("#")) {
                                     if (SYMTAB.get(line.OPERAND) != null) {
                                         operand = SYMTAB.get(line.OPERAND).getMemoryLocation();
                                         System.out.println("Searching in SYMTAB for OPERAND: " + SYMTAB.get(line.OPERAND).getLabel() + " " + SYMTAB.get(line.OPERAND).getMemoryLocation());
                                         n = 0;
                                         i = 1;
+                                        objectCode = HexUtil.buildFormat3(n, i, x, 0, OPTAB.get(line.OPCODE).getOpCode(), operand, HexUtil.addHex(line.LOCCTR, "3"), BASE);
+                                    } else {
+                                        n = 0;
+                                        i = 1;
+                                        String temp;
+                                        temp = HexUtil.decimalToHex(Integer.parseInt(line.OPERAND), false);
+                                        operand = temp;
+                                        objectCode = HexUtil.buildFormat3Direct(n, i, 0, OPTAB.get(line.OPCODE).getOpCode(), operand);
+                                    }
+                                    //System.out.println("Op for line " + lineNum + " is " + OPTAB.get(line.OPCODE).getOpCode());
+
+                                } else {
+                                    n = 1;
+                                    i = 1;
+                                    objectCode = HexUtil.buildFormat3(n, i, x, 0, OPTAB.get(line.OPCODE).getOpCode(), operand, HexUtil.addHex(line.LOCCTR, "3"), BASE);
+                                }
+
+                                lengthOfObjectCodeInHalfBytes = "6";
+
+                            } else if (format == 4) {
+
+                                if (input.contains(",")) {
+                                    x = 1;
+                                }
+
+                                if (input.contains("#")) {
+                                    if (SYMTAB.get(line.OPERAND) != null) {
+                                        operand = SYMTAB.get(line.OPERAND).getMemoryLocation();
+                                        n = 0;
+                                        i = 1;
+                                        modificationLines.add(modLine(line.LOCCTR));
                                     } else {
                                         n=0;
                                         i=1;
@@ -367,71 +401,24 @@ public class Assembler {
                                         temp = HexUtil.decimalToHex(Integer.parseInt(line.OPERAND), false);
                                         operand = temp;
                                     }
-                                    //System.out.println("Op for line " + lineNum + " is " + OPTAB.get(line.OPCODE).getOpCode());
-                                    objectCode = HexUtil.buildFormat3Direct(n, i, 0, OPTAB.get(line.OPCODE).getOpCode(), operand);
-                                }else{
-                                    n=1;
-                                    i=1;
-                                    objectCode = HexUtil.buildFormat3(n, i, x, 0, OPTAB.get(line.OPCODE).getOpCode(), operand, HexUtil.addHex(line.LOCCTR, "3"), BASE);
+                                    objectCode = HexUtil.buildFormat4(n, i, x, 1, OPTAB.get(line.OPCODE).getOpCode(), operand);
+                                } else {
+                                    n = 1;
+                                    i = 1;
+                                    objectCode = HexUtil.buildFormat4(n, i, x, 1, OPTAB.get(line.OPCODE).getOpCode(), operand);
+                                    modificationLines.add(modLine(line.LOCCTR));
                                 }
 
-                                lengthOfObjectCodeInHalfBytes = "6";
-
-                            }else if (format == 4){
-
-                                if (input.contains(",")){
-                                                        x = 1;
-                                }
-
-                                if(input.contains("#")){
-                                    if (SYMTAB.get(line.OPERAND) != null){
-                                        operand = SYMTAB.get(line.OPERAND).getMemoryLocation();
-                                        n = 0;
-                                        i = 1;
-                                    }else{
-                                        String temp;
-                                        temp = HexUtil.decimalToHex(Integer.parseInt(line.OPERAND), false);
-                                        operand = temp;
-                                    }
-                                }else{
-                                    n=1;
-                                    i=1;
-                                }
-                                modificationLines.add(modLine(line.LOCCTR));
                                 lengthOfObjectCodeInHalfBytes = "8";
-                                objectCode = HexUtil.buildFormat4(n, i, x, 1, OPTAB.get(line.OPCODE).getOpCode(), operand);
+
                             }
                         }
                     }
-                    if (HexUtil.hexToDecimal((HexUtil.addHex(currentTextRecordLength, lengthOfObjectCodeInHalfBytes))) > 60 || codeBreak) {
-                       //create new text record and write current to .obj file
-                       String textLine = textLine(currentStartingAddress, textRecord.toString());
-                       textRecord = new StringBuilder();
-                       objectFile.write(textLine);
-                       objectFile.newLine();
-                       lineFull = true;
-                       codeBreak = false;
-                       textRecord.append(objectCode.toUpperCase());
-                        System.out.println("Object code for line " + lineNum + " is: " + objectCode.toUpperCase());
-                    } else {
-                       currentTextRecordLength = HexUtil.addHex(currentTextRecordLength, lengthOfObjectCodeInHalfBytes);
-                        System.out.println("Object code for line " + lineNum + " is: " + objectCode.toUpperCase());
-                       textRecord.append(objectCode.toUpperCase());
-                    }
-                //end if opcode is in OPTAB
-                }else  if(line.getOPCODE().equals("WORD")){
-                    objectCode = HexUtil.formatAddress(HexUtil.decimalToHex(Integer.parseInt(line.OPERAND), false));
-                    System.out.println("Object code for line " + lineNum + " is: " + objectCode.toUpperCase());
-                    lengthOfObjectCodeInHalfBytes = "6";
-                    //machine code = hex rep of decimal
-                    if(objectCode.equals("-1")){
-                		error = true;
-                	}
-                    if (HexUtil.hexToDecimal((HexUtil.addHex(currentTextRecordLength, lengthOfObjectCodeInHalfBytes))) > 60 || codeBreak) {
+                    if (HexUtil.hexToDecimal((HexUtil.addHex(currentTextRecordLength, lengthOfObjectCodeInHalfBytes))) > 60) {
                         //create new text record and write current to .obj file
-                    	if(objectCode.equals("-1")){
-                    		error = true;
-                    	}
+                        if (objectCode.equals("-1")) {
+                            error = true;
+                        }
                         String textLine = textLine(currentStartingAddress, textRecord.toString());
                         textRecord = new StringBuilder();
                         currentTextRecordLength = "0";
@@ -440,33 +427,71 @@ public class Assembler {
                         lineFull = true;
                         codeBreak = false;
                         textRecord.append(objectCode.toUpperCase());
-                        
+                        currentStartingAddress = line.LOCCTR;
                         currentTextRecordLength = HexUtil.addHex(currentTextRecordLength, lengthOfObjectCodeInHalfBytes);
                         currentTextRecordLength = HexUtil.formatDisplacement(currentTextRecordLength, 2);
                         System.out.println("Object code for line " + lineNum + " is: " + objectCode.toUpperCase());
-                   } else {
+                    } else {
+                        currentTextRecordLength = HexUtil.addHex(currentTextRecordLength, lengthOfObjectCodeInHalfBytes);
+                        System.out.println("Object code for line " + lineNum + " is: " + objectCode.toUpperCase());
+                        textRecord.append(objectCode.toUpperCase());
+                    }
+                    //end if opcode is in OPTAB
+                } else if (line.getOPCODE().equals("WORD")) {
+                    objectCode = HexUtil.formatAddress(HexUtil.decimalToHex(Integer.parseInt(line.OPERAND), false));
+                    System.out.println("Object code for line " + lineNum + " is: " + objectCode.toUpperCase());
+                    lengthOfObjectCodeInHalfBytes = "6";
+                    //machine code = hex rep of decimal
+                    if (objectCode.equals("-1")) {
+                        error = true;
+                    }
+                    if (HexUtil.hexToDecimal((HexUtil.addHex(currentTextRecordLength, lengthOfObjectCodeInHalfBytes))) > 60) {
+                        //create new text record and write current to .obj file
+                        if (objectCode.equals("-1")) {
+                            error = true;
+                        }
+                        String textLine = textLine(currentStartingAddress, textRecord.toString());
+                        textRecord = new StringBuilder();
+                        currentTextRecordLength = "0";
+                        objectFile.write(textLine);
+                        objectFile.newLine();
+                        lineFull = true;
+                        codeBreak = false;
+                        textRecord.append(objectCode.toUpperCase());
+                        currentStartingAddress = line.LOCCTR;
+                        currentTextRecordLength = HexUtil.addHex(currentTextRecordLength, lengthOfObjectCodeInHalfBytes);
+                        currentTextRecordLength = HexUtil.formatDisplacement(currentTextRecordLength, 2);
+                        System.out.println("Object code for line " + lineNum + " is: " + objectCode.toUpperCase());
+                    } else {
                         currentTextRecordLength = HexUtil.addHex(currentTextRecordLength, lengthOfObjectCodeInHalfBytes);
                         textRecord.append(objectCode.toUpperCase());
-                   }
+                    }
 
-                }else if(line.getOPCODE().equals("RESW") || line.getOPCODE().equals("RESB")){
-                   //indicates code break, no machine code generated
-                   codeBreak = true;
-                }else{
+                } else if (line.getOPCODE().equals("RESW") || line.getOPCODE().equals("RESB")) {
+                    //indicates code break, no machine code generated
+                    codeBreak = true;
+                } else {
                     //operation unsupported
                     System.out.println("Operation unsupported, error! " + line.getOPCODE() + " " + lineNum);
                     error = true;
                 }
 
-                if(codeBreak && textRecord.length() != 0){
+                if (codeBreak && !currentTextRecordLength.equals("0") && !lineFull) {
                     String textLine = textLine(currentStartingAddress, textRecord.toString());
                     textRecord = new StringBuilder();
                     currentTextRecordLength = "0";
                     objectFile.write(textLine);
                     objectFile.newLine();
-                    lineFull = false;
+                    lineFull = true;
                     codeBreak = false;
                 }
+                    if (lineFull || currentTextRecordLength.equals("0")) {
+                        currentStartingAddress = line.LOCCTR;
+                        lineFull = false;
+                        codeBreak = false;
+                    }
+
+            }
             //end while loop reading input       
             }
 			 
@@ -941,12 +966,9 @@ class HexUtil {
 
         //remove the extra F's since conversion results in 64-bits
         if (negative == true) {
-            for (int i = 0; i < result.length(); i++) {
-                if (result.charAt(i) == 'f') {
-                    count++;
-                }
-            }
-            result = result.substring(count-2, 16);
+
+            result = result.substring(result.length()-3, result.length());
+
         }
         return result;
     }
