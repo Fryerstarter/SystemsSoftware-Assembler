@@ -39,7 +39,7 @@ public class Assembler {
         String LOCCTR = passOne(args[0], SYMTAB, OPTAB);
         //if -1 returned source code has errors
         if(LOCCTR.equals("-1")){
-            System.out.println("Error in pass 1. No object code generated.\nPlease review.lst file for errors");
+            System.out.println("Error in pass 1. No object code generated.\nPlease review the .lst file for errors");
         //if no errors, run Pass Two
         }else{
             System.out.println("PASS 2 STARTING");
@@ -47,7 +47,7 @@ public class Assembler {
             System.out.println("pass 2 done");
             System.out.println("error value is " + error);
             if(error == -1){
-            	System.out.println("Object code generation failed");
+            	System.out.println("Object code generation failed, please review source file.");
             }
         }
     }
@@ -107,11 +107,17 @@ public class Assembler {
                 String tempInput;
                 tempInput = input.replaceAll("\\s+", "");
                 if (tempInput.length() > 0) {
-                    while (input.startsWith(".")) {
+                    while (tempInput.startsWith(".")) {
+                    	tempInput = input.replaceAll("\\s+", "");
                         lineNum++;
                         intermediateFile.write(lineNum + "\t" + input);
                         intermediateFile.newLine();
                         input = inputFile.readLine();
+                        tempInput = input.replaceAll("\\s+", "");
+                        while(!(tempInput.length() > 0)){
+                        	input = inputFile.readLine();
+                            tempInput = input.replaceAll("\\s+", "");
+                        }
                     }
                     if (input.contains(".")) {
                         cLine = parseComment(input);
@@ -137,7 +143,7 @@ public class Assembler {
                             //SYMBOL already in SYMTAB, set error
                             error = true;
 
-                            intermediateFile.write("Duplicate symbol: " + currentLine.getSYMBOL().toUpperCase() + "on line " + lineNum);
+                            intermediateFile.write("Duplicate symbol: " + currentLine.getSYMBOL().toUpperCase() + " on line " + lineNum);
                             intermediateFile.newLine();
                         } else {
 
@@ -232,7 +238,7 @@ public class Assembler {
         String objectCode = "", operand = "",BASE = "", currentStartingAddress="",lengthOfObjectCodeInHalfBytes = "0",currentTextRecordLength = "0000";
         String[] cLine = new String[2];
         StringBuilder textRecord = new StringBuilder();
-        boolean error = false, isBase = false, codeBreak = false, lineFull = true;
+        boolean error = false, isBase = false, codeBreak = false, lineFull = true, newStart = false;
         ArrayList<String> modificationLines = new ArrayList<>();
         Symbol currentSymbol;
        
@@ -303,8 +309,11 @@ public class Assembler {
                 if (line.getOPCODE().equals("END"))
                     break;
 
-
-
+                if(newStart){
+                	currentStartingAddress = line.LOCCTR;
+                	newStart = false;
+                }
+                
                 if (line.OPCODE.equals("BASE")) {
                     BASE = SYMTAB.get(line.OPERAND).getMemoryLocation();
                     //check if OPCODE is in OPTAB
@@ -470,6 +479,7 @@ public class Assembler {
                 } else if (line.getOPCODE().equals("RESW") || line.getOPCODE().equals("RESB")) {
                     //indicates code break, no machine code generated
                     codeBreak = true;
+                    newStart = true;
                 } else {
                     //operation unsupported
                     System.out.println("Operation unsupported, error! " + line.getOPCODE() + " " + lineNum);
@@ -482,6 +492,7 @@ public class Assembler {
                     currentTextRecordLength = "0";
                     objectFile.write(textLine);
                     objectFile.newLine();
+                    currentStartingAddress = line.LOCCTR;
                     lineFull = true;
                     codeBreak = false;
                 }
@@ -503,6 +514,7 @@ public class Assembler {
             //write end line
             objectFile.write(endLine(startLoc).toUpperCase());
             //close file
+            intermediateFile.close();
             objectFile.close();
             
         //end of try    
