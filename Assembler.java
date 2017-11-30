@@ -36,18 +36,21 @@ public class Assembler {
         Hashtable<String, Operation> OPTAB = Operation.buildOPTAB();
         
         //run Pass One
+        System.out.println("Running pass 1.");
         String LOCCTR = passOne(args[0], SYMTAB, OPTAB);
+        System.out.println("Pass 1 complete.");
         //if -1 returned source code has errors
         if(LOCCTR.equals("-1")){
             System.out.println("Error in pass 1. No object code generated.\nPlease review the .lst file for errors");
         //if no errors, run Pass Two
         }else{
-            System.out.println("PASS 2 STARTING");
+            System.out.println("Running pass 2.");
+        	
             int error = passTwo(args[0], LOCCTR, SYMTAB, OPTAB);
-            System.out.println("pass 2 done");
-            System.out.println("error value is " + error);
+            System.out.println("Pass 2 done.");
+            //System.out.println("error value is " + error);
             if(error == -1){
-            	System.out.println("Object code generation failed, please review source file.");
+            	System.out.println("Object code generation failed in pass 2, please review source file.");
             }
         }
     }
@@ -179,7 +182,7 @@ public class Assembler {
                         String memAddHex = HexUtil.decimalToHex(memAdd, false);
                         LOCCTR = HexUtil.addHex(LOCCTR, memAddHex);
                     } else if (currentLine.getOPCODE().equals("RESB")) {
-                        System.out.println("RESB found, value of operand is :" + Integer.toString(Integer.parseInt(currentLine.getOPERAND())));
+                       // System.out.println("RESB found, value of operand is :" + Integer.toString(Integer.parseInt(currentLine.getOPERAND())));
                         LOCCTR = HexUtil.addHex(LOCCTR, HexUtil.decimalToHex(Integer.parseInt(currentLine.getOPERAND()), false));
 
                     } else if (currentLine.getOPCODE().equals("BYTE")) {
@@ -369,7 +372,7 @@ public class Assembler {
                                 if (input.contains("#")) {
                                     if (SYMTAB.get(line.OPERAND) != null) {
                                         operand = SYMTAB.get(line.OPERAND).getMemoryLocation();
-                                        System.out.println("Searching in SYMTAB for OPERAND: " + SYMTAB.get(line.OPERAND).getLabel() + " " + SYMTAB.get(line.OPERAND).getMemoryLocation());
+                                        //System.out.println("Searching in SYMTAB for OPERAND: " + SYMTAB.get(line.OPERAND).getLabel() + " " + SYMTAB.get(line.OPERAND).getMemoryLocation());
                                         n = 0;
                                         i = 1;
                                         objectCode = HexUtil.buildFormat3(n, i, x, 0, OPTAB.get(line.OPCODE).getOpCode(), operand, HexUtil.addHex(line.LOCCTR, "3"), BASE);
@@ -439,16 +442,16 @@ public class Assembler {
                         currentStartingAddress = line.LOCCTR;
                         currentTextRecordLength = HexUtil.addHex(currentTextRecordLength, lengthOfObjectCodeInHalfBytes);
                         currentTextRecordLength = HexUtil.formatDisplacement(currentTextRecordLength, 2);
-                        System.out.println("Object code for line " + lineNum + " is: " + objectCode.toUpperCase());
+                       // System.out.println("Object code for line " + lineNum + " is: " + objectCode.toUpperCase());
                     } else {
                         currentTextRecordLength = HexUtil.addHex(currentTextRecordLength, lengthOfObjectCodeInHalfBytes);
-                        System.out.println("Object code for line " + lineNum + " is: " + objectCode.toUpperCase());
+                        //System.out.println("Object code for line " + lineNum + " is: " + objectCode.toUpperCase());
                         textRecord.append(objectCode.toUpperCase());
                     }
                     //end if opcode is in OPTAB
                 } else if (line.getOPCODE().equals("WORD")) {
                     objectCode = HexUtil.formatAddress(HexUtil.decimalToHex(Integer.parseInt(line.OPERAND), false));
-                    System.out.println("Object code for line " + lineNum + " is: " + objectCode.toUpperCase());
+                    //System.out.println("Object code for line " + lineNum + " is: " + objectCode.toUpperCase());
                     lengthOfObjectCodeInHalfBytes = "6";
                     //machine code = hex rep of decimal
                     if (objectCode.equals("-1")) {
@@ -470,7 +473,7 @@ public class Assembler {
                         currentStartingAddress = line.LOCCTR;
                         currentTextRecordLength = HexUtil.addHex(currentTextRecordLength, lengthOfObjectCodeInHalfBytes);
                         currentTextRecordLength = HexUtil.formatDisplacement(currentTextRecordLength, 2);
-                        System.out.println("Object code for line " + lineNum + " is: " + objectCode.toUpperCase());
+                        //System.out.println("Object code for line " + lineNum + " is: " + objectCode.toUpperCase());
                     } else {
                         currentTextRecordLength = HexUtil.addHex(currentTextRecordLength, lengthOfObjectCodeInHalfBytes);
                         textRecord.append(objectCode.toUpperCase());
@@ -559,10 +562,10 @@ public class Assembler {
            builder.append(" ");
        }
        startingAddress = HexUtil.formatAddress(startingAddress);
-       System.out.println("Starting address is " + startingAddress);
+      // System.out.println("Starting address is " + startingAddress);
        builder.append(startingAddress);
        progLength = HexUtil.formatAddress(progLength);
-       System.out.println("Prog length is " + progLength);
+      // System.out.println("Prog length is " + progLength);
        builder.append(progLength);
        return builder.toString();
     }
@@ -665,7 +668,7 @@ class LineParser {
                     String TARGET1 = target[0];
                     String TARGET2 = target[1];
                     if(HexUtil.isRegister(TARGET1)){
-                        System.out.println("ITS A REGISTER!");
+                       // System.out.println("ITS A REGISTER!");
                         line = new IntermediateLine(LOCCTR, OPCODE, TARGET1, TARGET2);
                     }else{
                         line = new IntermediateLine(LOCCTR, SYMBOL, OPCODE, TARGET1);
@@ -696,7 +699,7 @@ class LineParser {
                     String TARGET1 = target[0];
                     String TARGET2 = target[1];
                     if(HexUtil.isRegister(TARGET1)){
-                        System.out.println("ITS A REGISTER!");
+                      //  System.out.println("ITS A REGISTER!");
                         line = new IntermediateLine(LOCCTR, "", OPCODE, TARGET1, TARGET2);
                     }else{
                         line = new IntermediateLine(LOCCTR, SYMBOL, OPCODE, TARGET1);
@@ -1150,7 +1153,7 @@ class HexUtil {
 		for(int j = 0; j < 3 - memoryLoc.length(); j++){
 			codeBuilder.append("0");
 		}
-		System.out.println("MEMORY LOCATION in DIRECT FORMAT 3 IS: " + memoryLoc);
+		//System.out.println("MEMORY LOCATION in DIRECT FORMAT 3 IS: " + memoryLoc);
         codeBuilder.append(memoryLoc);
         machineCode = codeBuilder.toString();
 
@@ -1171,11 +1174,11 @@ class HexUtil {
         int memLocDec = hexToDecimal(memoryLoc);
         int displacementDec = memLocDec - pcDec;
         if (displacementDec <= 2047 && displacementDec >= -2048) {
-            System.out.println("Using PC relative");
+           // System.out.println("Using PC relative");
             b = 0;
             p = 1;
         } else {
-            System.out.println("Using Base Relative");
+           // System.out.println("Using Base Relative");
             displacementDec = memLocDec - hexToDecimal(BASE);
             if (displacementDec >= 0 && displacementDec <= 4095) {
                 b = 1;
@@ -1196,7 +1199,7 @@ class HexUtil {
         } else if (b == 1 && p == 0) {
             displacement = subHex(memoryLoc, BASE);
         }
-        System.out.println("MEMORY LOCATION in REGULAR FORMAT 3 IS: " + memoryLoc);
+       // System.out.println("MEMORY LOCATION in REGULAR FORMAT 3 IS: " + memoryLoc);
         codeBuilder.append(formatDisplacement(displacement, 3));
         machineCode = codeBuilder.toString();
 
