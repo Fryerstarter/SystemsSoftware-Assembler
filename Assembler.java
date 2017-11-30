@@ -128,8 +128,11 @@ public class Assembler {
                     } else
                         currentLine = LineParser.parseLinePassOne(input);
 
-                    if (currentLine.getOPCODE().equals("END"))
+                    if (currentLine.getOPCODE().equals("END")){
+                    	 intermediateFile.write("\t" + input);
+                    		intermediateFile.newLine();
                         break;
+                    }
 
                     if (input.contains("+")) {
                         format4 = true;
