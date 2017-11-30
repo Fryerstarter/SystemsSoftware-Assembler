@@ -378,7 +378,7 @@ public class Assembler {
                                         //System.out.println("Searching in SYMTAB for OPERAND: " + SYMTAB.get(line.OPERAND).getLabel() + " " + SYMTAB.get(line.OPERAND).getMemoryLocation());
                                         n = 0;
                                         i = 1;
-                                        objectCode = HexUtil.buildFormat3(n, i, x, 0, OPTAB.get(line.OPCODE).getOpCode(), operand, HexUtil.addHex(line.LOCCTR, "3"), BASE);
+                                        objectCode = HexUtil.buildFormat3(n, i, x, 0, OPTAB.get(line.OPCODE).getOpCode(), operand, HexUtil.addHex(line.LOCCTR, "3"), BASE, lineNum);
                                     } else {
                                         n = 0;
                                         i = 1;
@@ -392,7 +392,7 @@ public class Assembler {
                                 } else {
                                     n = 1;
                                     i = 1;
-                                    objectCode = HexUtil.buildFormat3(n, i, x, 0, OPTAB.get(line.OPCODE).getOpCode(), operand, HexUtil.addHex(line.LOCCTR, "3"), BASE);
+                                    objectCode = HexUtil.buildFormat3(n, i, x, 0, OPTAB.get(line.OPCODE).getOpCode(), operand, HexUtil.addHex(line.LOCCTR, "3"), BASE, lineNum);
                                 }
 
                                 lengthOfObjectCodeInHalfBytes = "6";
@@ -1164,7 +1164,7 @@ class HexUtil {
 		
 	}
 	
-    public static String buildFormat3(int n, int i, int x, int e, String opCode, String memoryLoc, String LOCCTR, String BASE) {
+    public static String buildFormat3(int n, int i, int x, int e, String opCode, String memoryLoc, String LOCCTR, String BASE, int lineNum) {
         //returns -1 if unable to use base of pc relative
         String machineCode;
         int b = 0, p = 0;
@@ -1187,7 +1187,7 @@ class HexUtil {
                 b = 1;
                 p = 0;
             } else {
-
+            	System.out.println("Object code generation failed on line " + lineNum + ". Base addressing failed.");
                 return "-1";
             }
 
